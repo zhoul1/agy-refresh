@@ -30,3 +30,8 @@ lerna-debug.log*
 dist/
 build/
 out/
+cli.exe
+
+# Runtime data
+data/
+tests/.tmp/

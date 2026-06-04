@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Agy 控制中心</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+</head>
+<body>
+  <div id="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-icon">⚡</div>
+        <div class="brand-text">
+          <div class="brand-title">Agy 控制中心</div>
+          <div class="brand-sub">定时调度 + 额度监控</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav-item" data-route="overview" href="#overview">
+          <span class="nav-icon">📊</span><span>总览</span>
+        </a>
+        <a class="nav-item" data-route="scheduler" href="#scheduler">
+          <span class="nav-icon">⏰</span><span>调度</span>
+        </a>
+        <a class="nav-item" data-route="trends" href="#trends">
+          <span class="nav-icon">📈</span><span>趋势</span>
+        </a>
+        <a class="nav-item" data-route="settings" href="#settings">
+          <span class="nav-icon">⚙️</span><span>设置</span>
+        </a>
+        <a class="nav-item" data-route="logs" href="#logs">
+          <span class="nav-icon">📝</span><span>日志</span>
+        </a>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="conn-status" id="connStatus">
+          <span class="dot dot-on"></span><span>已连接</span>
+        </div>
+        <div class="uptime" id="uptime">运行 0 分钟</div>
+      </div>
+    </aside>
+    <main class="main">
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 id="pageTitle">总览</h1>
+          <div class="topbar-sub" id="pageSub">实时状态、统计与快捷操作</div>
+        </div>
+        <div class="topbar-right">
+          <div class="status-pill" id="daemonPill">
+            <span class="dot"></span><span>调度: --</span>
+          </div>
+          <div class="status-pill" id="monitorPill">
+            <span class="dot"></span><span>监控: --</span>
+          </div>
+        </div>
+      </header>
+      <section class="content" id="content"></section>
+    </main>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

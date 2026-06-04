@@ -1,0 +1,39 @@
+{
+  "userStatus": {
+    "name": "Test User",
+    "email": "test@example.com",
+    "planStatus": {
+      "planInfo": {
+        "teamsTier": "TEAMS_TIER_TEAMS",
+        "planName": "Teams",
+        "monthlyPromptCredits": 100000,
+        "monthlyFlowCredits": 500000
+      },
+      "availablePromptCredits": 0,
+      "availableFlowCredits": 0
+    },
+    "cascadeModelConfigData": {
+      "clientModelConfigs": [
+        {
+          "label": "Exhausted Gemini Model",
+          "modelOrAlias": { "model": "MODEL_EXHAUSTED" },
+          "quotaInfo": { "remainingFraction": 0, "resetTime": "2026-06-05T12:00:00Z" }
+        },
+        {
+          "label": "Full Gemini Model",
+          "modelOrAlias": { "model": "MODEL_FULL" },
+          "quotaInfo": { "remainingFraction": 1.0, "resetTime": "2026-06-05T12:00:00Z" }
+        },
+        {
+          "label": "No Quota Info Model",
+          "modelOrAlias": { "model": "MODEL_NO_QUOTA" }
+        },
+        {
+          "label": null,
+          "modelOrAlias": { "model": "MODEL_NO_LABEL" },
+          "quotaInfo": { "remainingFraction": 0.5 }
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "userStatus": {
+    "name": "Nabo Devylder",
+    "email": "nabodevylder@gmail.com",
+    "planStatus": {
+      "planInfo": {
+        "teamsTier": "TEAMS_TIER_PRO",
+        "planName": "Pro",
+        "monthlyPromptCredits": 50000,
+        "monthlyFlowCredits": 150000
+      },
+      "availablePromptCredits": 500,
+      "availableFlowCredits": 100
+    },
+    "cascadeModelConfigData": {
+      "clientModelConfigs": [
+        {
+          "label": "Gemini 3.5 Flash (Medium)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M20" },
+          "quotaInfo": { "remainingFraction": 0.8, "resetTime": "2026-06-04T23:42:47Z" }
+        },
+        {
+          "label": "Gemini 3.5 Flash (High)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M132" },
+          "quotaInfo": { "remainingFraction": 0.8, "resetTime": "2026-06-04T23:42:47Z" }
+        },
+        {
+          "label": "Gemini 3.5 Flash (Low)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M187" },
+          "quotaInfo": { "remainingFraction": 0.8, "resetTime": "2026-06-04T23:42:47Z" }
+        },
+        {
+          "label": "Gemini 3.1 Pro (Low)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M36" },
+          "quotaInfo": { "remainingFraction": 0.8, "resetTime": "2026-06-04T23:42:47Z" }
+        },
+        {
+          "label": "Gemini 3.1 Pro (High)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M16" },
+          "quotaInfo": { "remainingFraction": 0.8, "resetTime": "2026-06-04T23:42:47Z" }
+        },
+        {
+          "label": "Claude Sonnet 4.6 (Thinking)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M35" },
+          "quotaInfo": { "resetTime": "2026-06-04T21:23:05Z" }
+        },
+        {
+          "label": "Claude Opus 4.6 (Thinking)",
+          "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M26" },
+          "quotaInfo": { "resetTime": "2026-06-04T21:23:05Z" }
+        },
+        {
+          "label": "GPT-OSS 120B (Medium)",
+          "modelOrAlias": { "model": "MODEL_OPENAI_GPT_OSS_120B_MEDIUM" },
+          "quotaInfo": { "resetTime": "2026-06-04T21:23:05Z" }
+        }
+      ]
+    }
+  }
+}

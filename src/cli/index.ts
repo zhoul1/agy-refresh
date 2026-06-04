@@ -1,20 +1,93 @@
-import { startDaemon } from "../lib/daemon";
+import { startDaemon, runDaemonOnce } from "../lib/daemon";
 import { runAgyCommand } from "../lib/executor";
 import { loadConfig } from "../lib/config";
+import { collectOnce, startMonitor } from "../lib/collector";
+import { startWebServer } from "../web";
+import {
+  registerDaemonFactory,
+  registerMonitorFactory,
+  startDaemon as runtimeStartDaemon,
+  startMonitor as runtimeStartMonitor,
+  appendLog,
+  onEvent,
+} from "../lib/runtime";
 
 function showHelp() {
   console.log(`
-定时自动调用 agy 工具 CLI 入口
+  Agy 控制中心 CLI 入口
 
-用法:
-  bun run src/cli/index.ts [选项]
+  用法:
+    bun run src/cli/index.ts [选项]
 
-选项:
-  --once, -o        立即执行一次对话并退出（用于测试验证）
-  --daemon, -d      以守护进程模式运行定时任务（默认模式）
-  --config <path>   指定自定义配置文件路径（默认读取当前目录下的 config.json）
-  --help, -h        显示帮助信息
+  选项:
+    --all              启动 daemon + monitor + Web（默认推荐；UI 完整接管）
+    --serve-only       仅启动 Web（不启动 daemon / monitor）
+    --daemon-only      仅启动 daemon 调度（带 Web，方便看状态）
+    --monitor-only     仅启动 monitor 采集（带 Web）
+    --once, -o         立即执行一次 agy 对话并退出
+    --collect-now      立即采集一次额度数据并退出
+    --config <path>    指定自定义配置文件路径（默认 config.json）
+    --help, -h         显示帮助信息
+
+  推荐流程:
+    bun run start --all
+    然后浏览器打开 http://localhost:3000 即可控制一切
 `);
+}
+
+async function installLogMirror() {
+  onEvent("log", (entry) => {
+    const tag = `[${entry.source.toUpperCase()}]`;
+    const line = `${entry.ts.replace("T", " ").substring(0, 19)} ${tag} ${entry.msg}`;
+    if (entry.level === "error") console.error(line);
+    else if (entry.level === "warn") console.warn(line);
+    else console.log(line);
+  });
+}
+
+async function bootWebOnly(configPath: string) {
+  const config = loadConfig(configPath);
+  installLogMirror();
+  startWebServer(config.web, { configPath });
+  process.on("SIGINT", () => process.exit(0));
+  process.on("SIGTERM", () => process.exit(0));
+  await new Promise(() => {});
+}
+
+async function bootAll(configPath: string) {
+  const config = loadConfig(configPath);
+  installLogMirror();
+  registerDaemonFactory(() => startDaemon(configPath));
+  registerMonitorFactory(() => startMonitor(config.monitor));
+  await runtimeStartDaemon();
+  await runtimeStartMonitor();
+  startWebServer(config.web, { configPath });
+  appendLog("system", "info", `全部服务已启动，访问 http://${config.web.host === "0.0.0.0" ? "localhost" : config.web.host}:${config.web.port} 进行管理`);
+  process.on("SIGINT", () => { appendLog("system", "info", "接收到 SIGINT，退出中..."); process.exit(0); });
+  process.on("SIGTERM", () => { appendLog("system", "info", "接收到 SIGTERM，退出中..."); process.exit(0); });
+  await new Promise(() => {});
+}
+
+async function bootDaemonOnly(configPath: string) {
+  const config = loadConfig(configPath);
+  installLogMirror();
+  registerDaemonFactory(() => startDaemon(configPath));
+  await runtimeStartDaemon();
+  startWebServer(config.web, { configPath });
+  process.on("SIGINT", () => process.exit(0));
+  process.on("SIGTERM", () => process.exit(0));
+  await new Promise(() => {});
+}
+
+async function bootMonitorOnly(configPath: string) {
+  const config = loadConfig(configPath);
+  installLogMirror();
+  registerMonitorFactory(() => startMonitor(config.monitor));
+  await runtimeStartMonitor();
+  startWebServer(config.web, { configPath });
+  process.on("SIGINT", () => process.exit(0));
+  process.on("SIGTERM", () => process.exit(0));
+  await new Promise(() => {});
 }
 
 async function main() {
@@ -25,17 +98,30 @@ async function main() {
     process.exit(0);
   }
 
-  // 解析 --config 参数
   let configPath: string | undefined;
   const configIndex = args.indexOf("--config");
   if (configIndex !== -1 && configIndex + 1 < args.length) {
     configPath = args[configIndex + 1];
   }
 
-  const isOnce = args.includes("--once") || args.includes("-o");
-  const isDaemon = args.includes("--daemon") || args.includes("-d") || !isOnce;
+  if (args.includes("--collect-now")) {
+    const config = loadConfig(configPath);
+    try {
+      const snapshot = await collectOnce(config.monitor.agyTimeoutMs);
+      console.log(`[CLI] 采集完成，记录了 ${snapshot.models.length} 个模型额度`);
+      if (snapshot.email) console.log(`[CLI] 账号: ${snapshot.email}`);
+      for (const m of snapshot.models) {
+        const pct = m.usedPercentage !== undefined ? m.usedPercentage.toFixed(1) : "?";
+        console.log(`  ${m.modelId}: ${pct}% 已使用${m.isExhausted ? " (已耗尽)" : ""}`);
+      }
+      process.exit(0);
+    } catch (err: any) {
+      console.error(`[CLI] 采集失败: ${err.message}`);
+      process.exit(1);
+    }
+  }
 
-  if (isOnce) {
+  if (args.includes("--once") || args.includes("-o")) {
     const config = loadConfig(configPath);
     console.log(`[CLI] 正在以单次执行模式调用命令: ${config.command.executable} ${config.command.args.join(" ")}`);
     const result = await runAgyCommand(config.command);
@@ -52,21 +138,16 @@ async function main() {
       console.error("-----------------------------------------");
       process.exit(1);
     }
-  } else if (isDaemon) {
-    const daemon = await startDaemon(configPath);
+  }
 
-    // 监听退出信号以优雅停机
-    process.on("SIGINT", () => {
-      console.log("\n[CLI] 接收到退出信号 (SIGINT)，正在关闭守护进程...");
-      daemon.stop();
-      process.exit(0);
-    });
-
-    process.on("SIGTERM", () => {
-      console.log("\n[CLI] 接收到终止信号 (SIGTERM)，正在关闭守护进程...");
-      daemon.stop();
-      process.exit(0);
-    });
+  if (args.includes("--all")) {
+    await bootAll(configPath);
+  } else if (args.includes("--daemon-only")) {
+    await bootDaemonOnly(configPath);
+  } else if (args.includes("--monitor-only")) {
+    await bootMonitorOnly(configPath);
+  } else {
+    await bootAll(configPath);
   }
 }
 

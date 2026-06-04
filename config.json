@@ -10,5 +10,13 @@
       "--prompt",
       "你好"
     ]
+  },
+  "monitor": {
+    "intervalMinutes": 10,
+    "agyTimeoutMs": 10000
+  },
+  "web": {
+    "port": 3000,
+    "host": "0.0.0.0"
   }
 }
