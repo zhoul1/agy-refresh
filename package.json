@@ -1,0 +1,13 @@
+{
+  "name": "agy-scheduler",
+  "version": "1.0.0",
+  "description": "Auto call agy cli regularly using Bun TS",
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/cli/index.ts",
+    "test": "bun test"
+  },
+  "devDependencies": {
+    "@types/bun": "latest"
+  }
+}
