@@ -11,32 +11,42 @@
 
 <div align="center">
 
-# AGy Refresh ⚡
+# AGy Refresh ⚡ — Quota Monitor in Your System Tray
 
-**Anti-starvation quota auto-refresh tool for AGy / Codeium AI Assistant — Scheduled execution · Quota monitoring · Historical trends**
-
-A web dashboard + background scheduler that monitors your AGy (antigravity) / Codeium AI assistant usage quota.\
-Automatically executes conversations to reset usage cycles, continuously collects quota data into SQLite, and visualizes historical trends through a web dashboard.
-
-Perfect for: **AGy users, Codeium users, antigravity IDE users** who want to **auto-refresh AI usage quota, track quota history, and never run out of daily credits.**
+**No browser tab needed. Your AI credits live in the Windows taskbar, like a battery indicator.**
 
 </div>
 
 ---
 
+## 🪟 Windows System Tray — Battery-Style Quota Indicator
+
+**The killer feature.** AGy 2.0 doesn't support plugins to show quota? We put the dashboard right in your taskbar notification area.
+
+- **🎨 Icon changes color by usage** — Green (plenty) → Orange (warning) → Red (exhausted), just like a laptop battery
+- **🖱️ Hover for details** — Credits remaining, model count, scheduler status — no window to open
+- **📋 Right-click for actions** — Collect now, open dashboard, per-model usage breakdown
+- **🔔 Toast notifications** — Disconnected, reconnected — Windows bubble tips keep you informed
+- **⚙️ Toggle from Web Settings** — Enable/disable anytime
+
+> Other tools make you open a settings page to see quota → **AGy Refresh brings quota to your fingertips.**
+
+---
+
 ## Why? 🤔
 
-AGy's quota reset mechanism works like this: **if a conversation is active at a specific time, a new usage cycle is unlocked.**\
-But the window doesn't trigger itself — you'd miss it and wait for the next cycle.
+AGy's quota reset works like this: **if a conversation is active at a specific time, a new usage cycle unlocks.**\
+But the window doesn't trigger itself — miss it and you wait for the next cycle.
 
-AGy Refresh handles it for you:
+AGy Refresh watches it for you:
 
-- **⏰ Scheduled conversations at 08:00 daily** — catch the reset window, ensure full-day availability
-- **🔄 Continuous scheduling** — auto-executes every N minutes within the window, retries 3 times on failure
-- **📊 Quota history tracking** — AGy only shows current usage; this tool collects and stores history
-- **💻 Web dashboard** — status, scheduler, charts, settings, logs, all in your browser
+- **🪟 System tray resident** — Glance at bottom-right to know today's quota
+- **⏰ Scheduled conversations at 08:00 daily** — Catch the reset window, ensure all-day availability
+- **🔄 Continuous scheduling** — Auto-executes every N minutes within the window, retries 3x on failure
+- **📊 Quota history tracking** — AGy only shows current usage; this tool collects & stores history
+- **💻 Web dashboard** — Status, scheduler, charts, settings, logs — all in the browser
 
-> **Bottom line: Auto-refresh to prevent starvation, track usage trends with charts, all可视.**
+> In short: **Auto-refresh to prevent starvation, tray-resident, visually trackable.**
 
 ---
 
@@ -44,7 +54,8 @@ AGy Refresh handles it for you:
 
 | Capability | Description |
 |------------|-------------|
-| 🕐 **Scheduled Execution** | Configurable time window + interval, triggers precisely at the scheduled minute |
+| 🪟 **Windows System Tray** | Color-coded icon (green/orange/red), hover for details, right-click actions, toast alerts |
+| 🕐 **Scheduled Execution** | Configurable time window + interval, triggers precisely on the minute |
 | 🔁 **Auto Retry** | Retries up to 3 times (10s apart) on failure, never misses a window |
 | 📡 **Quota Collection** | Pulls usage from AGy Connect RPC API every N minutes, stores in SQLite |
 | 📈 **Historical Trends** | Chart.js line charts with 24h / 7d / 30d switching |
@@ -70,7 +81,7 @@ bun install
 # 2. One-command start (scheduler + collector + web dashboard)
 bun run start --all
 
-# 3. Open in browser
+# 3. Open Settings → Enable System Tray
 open http://localhost:6789
 ```
 
@@ -94,7 +105,7 @@ pm2 save
 | **Overview** | Next talk countdown, Prompt Credits, model quota table, quick actions |
 | **Scheduler** | Start/stop control, next run countdown, last execution result, history |
 | **Trends** | Usage rate line charts per model (24h / 7d / 30d) |
-| **Settings** | Visual `config.json` editor, save to hot-reload |
+| **Settings** | Visual `config.json` editor, **System Tray toggle**, save to hot-reload |
 | **Logs** | Real-time SSE log stream from daemon / monitor / web, filterable by source/level |
 
 ---
@@ -118,21 +129,13 @@ pm2 save
   },
   "web": {
     "port": 6789,
-    "host": "0.0.0.0"
+    "host": "0.0.0.0",
+    "trayEnabled": true
   }
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `scheduler.startTime` / `endTime` | Daily execution window |
-| `scheduler.intervalMinutes` | Execution interval within window |
-| `command.executable` / `args` | Command and arguments to execute |
-| `monitor.intervalMinutes` | Quota collection interval |
-| `monitor.agyTimeoutMs` | HTTP timeout for quota collection |
-| `web.port` / `web.host` | Dashboard listen address |
-
-> All settings are editable via the Web UI and take effect immediately on save.
+> All settings editable via Web UI, changes hot-reload instantly.
 
 ---
 
@@ -155,7 +158,8 @@ bun run start --collect-now      # Collect quota once and exit
 CLI --all
   ├─ Daemon       → Schedule loop, execute command, retry on failure
   ├─ Monitor      → Collect Connect RPC → SQLite
-  └─ Web Server   → Elysia REST + SSE + static SPA
+  ├─ Web Server   → Elysia REST + SSE + static SPA
+  └─ Tray Icon    → PowerShell system tray (Windows)
 
 Runtime (singleton)
   ├─ State: daemon / monitor status
@@ -163,7 +167,7 @@ Runtime (singleton)
   └─ Ring buffer log (500 entries)
 ```
 
-**Tech Stack:** [Bun](https://bun.sh/) · [Elysia](https://elysiajs.com/) · SQLite · Chart.js · Vanilla JS
+**Tech Stack:** [Bun](https://bun.sh/) · [Elysia](https://elysiajs.com/) · SQLite · Chart.js · Vanilla JS · PowerShell
 
 ---
 
