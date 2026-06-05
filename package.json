@@ -1,5 +1,5 @@
 {
-  "name": "agy-scheduler",
+  "name": "agy-refresh",
   "version": "1.0.0",
   "description": "Auto call agy cli regularly using Bun TS",
   "type": "module",
@@ -7,9 +7,9 @@
     "start": "bun run src/cli/index.ts",
     "test": "bun test",
     "pm2:start": "pm2 start ecosystem.config.cjs",
-    "pm2:stop": "pm2 stop agy-scheduler",
-    "pm2:restart": "pm2 restart agy-scheduler",
-    "pm2:logs": "pm2 logs agy-scheduler",
+    "pm2:stop": "pm2 stop agy-refresh",
+    "pm2:restart": "pm2 restart agy-refresh",
+    "pm2:logs": "pm2 logs agy-refresh",
     "pm2:status": "pm2 status"
   },
   "devDependencies": {

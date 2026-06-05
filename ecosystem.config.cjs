@@ -1,9 +1,7 @@
 module.exports = {
   apps: [{
-    name: 'agy-scheduler',
-    script: 'src/cli/index.ts',
-    interpreter: 'bun',
-    args: '--all',
+    name: 'agy-refresh',
+    script: './pm2-wrapper.cjs',
     cwd: __dirname,
     instances: 1,
     exec_mode: 'fork',
