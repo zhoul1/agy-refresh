@@ -65,6 +65,10 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
       set.status = 400;
       return { error: error.message, type: "validation" };
     }
+    if (code === "NOT_FOUND") {
+      set.status = 404;
+      return { error: "not found" };
+    }
     appendLog("web", "error", `请求异常: ${error?.message || String(error)}`);
     set.status = 500;
     return { error: error?.message || "internal error" };

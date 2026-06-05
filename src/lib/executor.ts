@@ -1,10 +1,16 @@
 import type { CommandConfig } from "./config";
 
+export interface CommandResult {
+  success: boolean;
+  stdout: string;
+  stderr: string;
+}
+
 /**
  * 执行配置的 agy (或其他) 命令行工具，并捕获输出结果
  * @param config 外部命令配置
  */
-export async function runAgyCommand(config: CommandConfig): Promise<{ success: boolean; stdout: string; stderr: string }> {
+export async function runAgyCommand(config: CommandConfig): Promise<CommandResult> {
   try {
     // 启动子进程
     const proc = Bun.spawn([config.executable, ...config.args], {

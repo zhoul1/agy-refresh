@@ -26,8 +26,8 @@ export function getNextRunTime(now: Date, config: SchedulerConfig): Date {
   // 计算当前时间对应的当天分钟数（高精度，支持秒和毫秒）
   const nowMins = now.getHours() * 60 + now.getMinutes() + (now.getSeconds() * 1000 + now.getMilliseconds()) / 60000;
 
-  // 寻找当天第一个严格大于当前分钟数的调度点
-  const nextMin = allowedMins.find((m) => m > nowMins);
+  // 寻找当天第一个调度点（允许 1 秒容忍，确保整点时刻不会跳过）
+  const nextMin = allowedMins.find((m) => m + 1 / 60000 > nowMins);
 
   const nextDate = new Date(now.getTime());
 

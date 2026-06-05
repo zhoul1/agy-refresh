@@ -1,6 +1,7 @@
 import { loadConfig } from "./config";
 import { getNextRunTime } from "./scheduler";
 import { runAgyCommand } from "./executor";
+import type { CommandResult } from "./executor";
 import { appendLog, setDaemonNextRunAt, recordDaemonExecution } from "./runtime";
 import { saveExecution } from "./database";
 
@@ -43,13 +44,13 @@ export async function startDaemon(configPath?: string) {
     activeTimer = setTimeout(async () => {
       appendLog("daemon", "info", `[${new Date().toLocaleTimeString("zh-CN", { hour12: false })}] 触发定时对话`);
       const runAt = new Date();
-      const result = await runAgyCommand(currentConfig.command);
+      const result = await executeWithRetry(currentConfig.command);
       const durationMs = Date.now() - runAt.getTime();
 
       if (result.success) {
         appendLog("daemon", "info", `自动对话执行成功，输出:\n${result.stdout.trim() || "(无标准输出)"}`);
       } else {
-        appendLog("daemon", "error", `自动对话执行失败，错误:\n${result.stderr.trim() || "(无错误输出)"}`);
+        appendLog("daemon", "error", `自动对话执行失败（已重试 ${result.retries} 次），错误:\n${result.stderr.trim() || "(无错误输出)"}`);
       }
 
       try {
@@ -99,13 +100,13 @@ export async function runDaemonOnce(configPath?: string, triggeredBy = "manual")
   const config = loadConfig(configPath);
   appendLog("daemon", "info", `手动触发对话: ${config.command.executable} ${config.command.args.join(" ")}`);
   const runAt = new Date();
-  const result = await runAgyCommand(config.command);
+  const result = await executeWithRetry(config.command);
   const durationMs = Date.now() - runAt.getTime();
 
   if (result.success) {
     appendLog("daemon", "info", `手动对话执行成功，输出:\n${result.stdout.trim() || "(无标准输出)"}`);
   } else {
-    appendLog("daemon", "error", `手动对话执行失败，错误:\n${result.stderr.trim() || "(无错误输出)"}`);
+    appendLog("daemon", "error", `手动对话执行失败（已重试 ${result.retries} 次），错误:\n${result.stderr.trim() || "(无错误输出)"}`);
   }
 
   try {
@@ -131,4 +132,25 @@ export async function runDaemonOnce(configPath?: string, triggeredBy = "manual")
   });
 
   return { ...result, durationMs, runAt: runAt.toISOString() };
+}
+
+/** 最大重试次数 */
+const MAX_RETRIES = 3;
+/** 重试间隔（毫秒） */
+const RETRY_DELAY_MS = 10000;
+
+/**
+ * 执行命令并在失败时自动重试
+ */
+async function executeWithRetry(command: import("./config").CommandConfig): Promise<CommandResult & { retries: number }> {
+  let last: CommandResult | null = null;
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (attempt > 0) {
+      appendLog("daemon", "warn", `自动对话执行失败，${attempt}/${MAX_RETRIES} 次重试中...`);
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS));
+    }
+    last = await runAgyCommand(command);
+    if (last.success) return { ...last, retries: attempt };
+  }
+  return { ...last!, retries: MAX_RETRIES };
 }

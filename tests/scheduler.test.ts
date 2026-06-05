@@ -21,12 +21,12 @@ describe("Scheduler Logic (getNextRunTime)", () => {
     expect(next.getMilliseconds()).toBe(0);
   });
 
-  test("exactly at start time: 08:00:00 -> 08:30:00 same day", () => {
+  test("exactly at start time: 08:00:00 -> 08:00:00 same day (run now)", () => {
     const now = new Date("2026-06-04T08:00:00");
     const next = getNextRunTime(now, defaultConfig);
     expect(next.getDate()).toBe(4);
     expect(next.getHours()).toBe(8);
-    expect(next.getMinutes()).toBe(30);
+    expect(next.getMinutes()).toBe(0);
   });
 
   test("between intervals: 08:15:00 -> 08:30:00 same day", () => {
@@ -37,23 +37,30 @@ describe("Scheduler Logic (getNextRunTime)", () => {
     expect(next.getMinutes()).toBe(30);
   });
 
-  test("exactly at final interval: 23:00:00 -> 23:30:00 same day", () => {
+  test("exactly at final interval: 23:00:00 -> 23:00:00 same day (run now)", () => {
     const now = new Date("2026-06-04T23:00:00");
+    const next = getNextRunTime(now, defaultConfig);
+    expect(next.getDate()).toBe(4);
+    expect(next.getHours()).toBe(23);
+    expect(next.getMinutes()).toBe(0);
+  });
+
+  test("at end time: 23:30:00 -> 23:30:00 same day (run now)", () => {
+    const now = new Date("2026-06-04T23:30:00");
     const next = getNextRunTime(now, defaultConfig);
     expect(next.getDate()).toBe(4);
     expect(next.getHours()).toBe(23);
     expect(next.getMinutes()).toBe(30);
   });
 
-  test("at end time: 23:30:00 -> 08:00:00 next day", () => {
-    const now = new Date("2026-06-04T23:30:00");
+  test("after end time: 23:30:01 -> 08:00:00 next day", () => {
+    const now = new Date("2026-06-04T23:30:01");
     const next = getNextRunTime(now, defaultConfig);
-    expect(next.getDate()).toBe(5); // June 5th
+    expect(next.getDate()).toBe(5);
     expect(next.getHours()).toBe(8);
     expect(next.getMinutes()).toBe(0);
   });
-
-  test("after end time: 23:45:00 -> 08:00:00 next day", () => {
+  test("after window: 23:45:00 -> 08:00:00 next day", () => {
     const now = new Date("2026-06-04T23:45:00");
     const next = getNextRunTime(now, defaultConfig);
     expect(next.getDate()).toBe(5);
@@ -81,8 +88,13 @@ describe("Scheduler Logic (getNextRunTime)", () => {
     expect(next.getHours()).toBe(9);
     expect(next.getMinutes()).toBe(15);
 
-    // 10:00 -> tomorrow 09:00
+    // 10:00 -> 10:00 (run now)
     next = getNextRunTime(new Date("2026-06-04T10:00:00"), customConfig);
+    expect(next.getDate()).toBe(4);
+    expect(next.getHours()).toBe(10);
+    expect(next.getMinutes()).toBe(0);
+    // 10:00:02 -> tomorrow 09:00 (past tolerance)
+    next = getNextRunTime(new Date("2026-06-04T10:00:02"), customConfig);
     expect(next.getDate()).toBe(5);
     expect(next.getHours()).toBe(9);
     expect(next.getMinutes()).toBe(0);
