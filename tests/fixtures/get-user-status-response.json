@@ -1,7 +1,7 @@
 {
   "userStatus": {
-    "name": "Nabo Devylder",
-    "email": "nabodevylder@gmail.com",
+    "name": "Test User",
+    "email": "user@example.com",
     "planStatus": {
       "planInfo": {
         "teamsTier": "TEAMS_TIER_PRO",

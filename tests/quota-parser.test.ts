@@ -11,7 +11,7 @@ describe("parseUserStatusToSnapshot", () => {
   const snapshot = parseUserStatusToSnapshot(response);
 
   it("should extract email", () => {
-    expect(snapshot.email).toBe("nabodevylder@gmail.com");
+    expect(snapshot.email).toBe("user@example.com");
   });
 
   it("should extract prompt credits", () => {

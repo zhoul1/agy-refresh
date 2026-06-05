@@ -40,7 +40,7 @@ describe("database CRUD", () => {
 
     const records = getRecords(10);
     expect(records.length).toBeGreaterThan(0);
-    expect(records[0].email).toBe("nabodevylder@gmail.com");
+    expect(records[0].email).toBe("user@example.com");
   });
 
   it("should retrieve latest record with models", () => {

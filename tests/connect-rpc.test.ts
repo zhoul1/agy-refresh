@@ -25,7 +25,7 @@ describe("connect-rpc with mocked fetch", () => {
     expect(response).toBeTruthy();
 
     const snapshot = parseUserStatusToSnapshot(response);
-    expect(snapshot.email).toBe("nabodevylder@gmail.com");
+    expect(snapshot.email).toBe("user@example.com");
     expect(snapshot.models).toHaveLength(8);
     expect(snapshot.promptCreditsLimit).toBe(50000);
   });
@@ -90,7 +90,7 @@ describe("connect-rpc response parsing integration", () => {
     const raw = await callGetUserStatus("https://127.0.0.1:49801", "token", mockFetch);
     const snapshot = parseUserStatusToSnapshot(raw);
 
-    expect(snapshot.email).toBe("nabodevylder@gmail.com");
+    expect(snapshot.email).toBe("user@example.com");
     expect(snapshot.models[0].displayName).toBe("Gemini 3.5 Flash (Medium)");
     expect(snapshot.models[0].usedPercentage).toBeCloseTo(20, 0);
 
