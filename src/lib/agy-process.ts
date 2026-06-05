@@ -20,7 +20,7 @@ export async function detectAllAgyProcesses(): Promise<AgyProcessInfo[]> {
   const results: AgyProcessInfo[] = [];
 
   try {
-    const proc = quietSpawn(["wmic", "process", 'where', 'name like \'%antigravity%\' or commandline like \'%antigravity%\'', "get", "processid,commandline", "/format:csv"], {
+    const proc = quietSpawn(["wmic", "process", 'where', 'name like \'%antigravity%\' or commandline like \'%antigravity%\' or name like \'%agy%\' or commandline like \'%agy%\'', "get", "processid,commandline", "/format:csv"], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -32,7 +32,10 @@ export async function detectAllAgyProcesses(): Promise<AgyProcessInfo[]> {
       const cmd = line.substring(0, idx);
       const pidStr = line.substring(idx + 1).trim();
       const pid = parseInt(pidStr, 10);
-      if (isNaN(pid) || !cmd.toLowerCase().includes("antigravity")) continue;
+      if (isNaN(pid)) continue;
+      const lowerCmd = cmd.toLowerCase();
+      if (!lowerCmd.includes("antigravity") && !lowerCmd.includes("agy")) continue;
+      if (/\bwmic(?:\.exe)?["\s]+process\b/i.test(cmd)) continue;
       const csrfToken = extractArg(cmd, "--csrf_token") || undefined;
       const extPort = extractArg(cmd, "--extension_server_port");
       results.push({
@@ -45,7 +48,7 @@ export async function detectAllAgyProcesses(): Promise<AgyProcessInfo[]> {
 
   if (results.length === 0) {
     try {
-      const proc = quietSpawn(["powershell", "-Command", "Get-CimInstance Win32_Process -Filter \"Name like '%antigravity%'\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"], {
+      const proc = quietSpawn(["powershell", "-Command", "Get-CimInstance Win32_Process -Filter \"Name like '%antigravity%' or CommandLine like '%antigravity%' or Name like '%agy%' or CommandLine like '%agy%'\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"], {
         stdout: "pipe",
       });
       const out = await new Response(proc.stdout).text();
@@ -53,7 +56,8 @@ export async function detectAllAgyProcesses(): Promise<AgyProcessInfo[]> {
       const list = Array.isArray(data) ? data : [data];
       for (const p of list) {
         if (!p?.ProcessId || !p?.CommandLine) continue;
-        const cmd = p.CommandLine;
+        const cmd = p.CommandLine as string;
+        if (/Get-CimInstance\s+Win32_Process/i.test(cmd)) continue;
         const pid = p.ProcessId;
         results.push({
           pid,
