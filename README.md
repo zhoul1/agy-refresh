@@ -1,4 +1,8 @@
 <p align="center">
+  <a href="README.en.md">English</a> · <strong>中文</strong>
+</p>
+
+<p align="center">
   <img src="https://img.shields.io/badge/Bun-1.3%2B-black?logo=bun" alt="Bun">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
   <img src="https://img.shields.io/badge/tests-91_✔️-brightgreen" alt="Tests">
