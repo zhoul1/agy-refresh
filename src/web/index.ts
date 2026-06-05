@@ -32,6 +32,7 @@ import {
 } from "../lib/runtime";
 import { runDaemonOnce } from "../lib/daemon";
 import { collectOnce } from "../lib/collector";
+import { setTrayApiUrl, startTray, stopTray, isTrayRunning } from "../lib/tray";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = join(HERE, "static");
@@ -116,6 +117,11 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
       web: { ...current.web, ...(incoming.web || {}) },
     };
     const valid = saveConfig(merged, configPath);
+    if (valid.web.trayEnabled) {
+      if (!isTrayRunning()) { setTrayApiUrl(`http://127.0.0.1:${valid.web.port}`); startTray(); }
+    } else {
+      stopTray();
+    }
     appendLog("web", "info", `配置已更新: scheduler=${valid.scheduler.startTime}-${valid.scheduler.endTime}/${valid.scheduler.intervalMinutes}min, cmd=${valid.command.executable}`);
     return valid;
   });
@@ -307,6 +313,12 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
   app.listen({ port: cfg.port, hostname: cfg.host });
   const displayHost = cfg.host === "0.0.0.0" ? "localhost" : cfg.host;
   appendLog("web", "info", `仪表盘启动: http://${displayHost}:${cfg.port}`);
+
+  if (cfg.trayEnabled) {
+    setTrayApiUrl(`http://127.0.0.1:${cfg.port}`);
+    startTray();
+    appendLog("web", "info", "系统托盘图标已启动");
+  }
 
   return app;
 }

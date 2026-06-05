@@ -112,6 +112,9 @@ const LOCALE_DATA = {
     "settings.webSub": "本控制中心监听地址。修改后需重启进程才能生效。",
     "settings.host": "Host",
     "settings.port": "Port",
+    "settings.tray": "系统托盘",
+    "settings.traySub": "在 Windows 通知区域显示图标，方便快速操作。",
+    "settings.trayEnabled": "启用系统托盘图标",
     "settings.save": "💾 保存并热生效",
     "settings.reload": "↻ 重新读取",
     "settings.reset": "恢复默认",
@@ -265,6 +268,9 @@ const LOCALE_DATA = {
     "settings.webSub": "Listen address. Restart process to apply changes.",
     "settings.host": "Host",
     "settings.port": "Port",
+    "settings.tray": "System Tray",
+    "settings.traySub": "Show an icon in the Windows notification area for quick actions.",
+    "settings.trayEnabled": "Enable system tray icon",
     "settings.save": "💾 Save & Hot Reload",
     "settings.reload": "↻ Reload",
     "settings.reset": "Reset Defaults",
@@ -859,6 +865,16 @@ function renderSettings() {
         <input class="form-input" type="number" id="cfg-port" value="${c.web.port}" readonly>
       </div>
     </div>
+  </div>
+  <div class="card">
+    <div class="card-title">${t("settings.tray")}</div>
+    <div class="fieldset-sub">${t("settings.traySub")}</div>
+    <div class="form-row">
+      <label class="form-checkbox">
+        <input type="checkbox" id="cfg-trayEnabled" ${c.web.trayEnabled ? "checked" : ""}>
+        <span class="checkbox-label">${t("settings.trayEnabled")}</span>
+      </label>
+    </div>
   </div>`);
 
   html.push(`<div class="action-bar" style="margin-bottom: 30px">
@@ -874,6 +890,7 @@ function renderSettings() {
     Store.saving = true;
     try {
       const args = $("#cfg-args").value.trim().length === 0 ? [] : $("#cfg-args").value.trim().split(/\s+/);
+      const trayEnabled = $("#cfg-trayEnabled")?.checked ?? false;
       const payload = {
         scheduler: {
           startTime: $("#cfg-startTime").value,
@@ -888,6 +905,7 @@ function renderSettings() {
           intervalMinutes: parseInt($("#cfg-monInterval").value, 10),
           agyTimeoutMs: parseInt($("#cfg-agyTimeout").value, 10),
         },
+        web: { trayEnabled },
       };
       Store.config = await api.send("/api/config", "PUT", payload);
       toast(t("toast.saved"), "success");
@@ -909,6 +927,8 @@ function renderSettings() {
     $("#cfg-args").value = "--prompt 你好";
     $("#cfg-monInterval").value = "10";
     $("#cfg-agyTimeout").value = "10000";
+    const tb = $("#cfg-trayEnabled");
+    if (tb) tb.checked = false;
     toast(t("toast.resetDone"), "info");
   };
 }

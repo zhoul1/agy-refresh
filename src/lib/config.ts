@@ -20,6 +20,7 @@ export interface MonitorConfig {
 export interface WebConfig {
   port: number;
   host: string;
+  trayEnabled: boolean;
 }
 export interface Config {
   scheduler: SchedulerConfig;
@@ -45,6 +46,7 @@ export const DEFAULT_CONFIG: Config = {
   web: {
     port: 6789,
     host: "0.0.0.0",
+    trayEnabled: false,
   },
 };
 
@@ -116,6 +118,7 @@ export function loadConfig(configPath?: string): Config {
     const web: WebConfig = {
       port: typeof parsed.web?.port === "number" ? parsed.web.port : DEFAULT_CONFIG.web.port,
       host: typeof parsed.web?.host === "string" ? parsed.web.host : DEFAULT_CONFIG.web.host,
+      trayEnabled: typeof parsed.web?.trayEnabled === "boolean" ? parsed.web.trayEnabled : DEFAULT_CONFIG.web.trayEnabled,
     };
 
     // 检查 startTime 是否早于 endTime
