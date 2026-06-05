@@ -18,5 +18,12 @@
   "web": {
     "port": 6789,
     "host": "0.0.0.0"
+  },
+  "autoContinue": {
+    "enabled": false,
+    "conversationId": "",
+    "prompt": "继续",
+    "exhaustedThreshold": 20,
+    "refreshThreshold": 50
   }
 }

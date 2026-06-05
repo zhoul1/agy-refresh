@@ -22,11 +22,20 @@ export interface WebConfig {
   host: string;
 }
 
+export interface AutoContinueConfig {
+  enabled: boolean;
+  conversationId: string;
+  prompt: string;
+  exhaustedThreshold: number;
+  refreshThreshold: number;
+}
+
 export interface Config {
   scheduler: SchedulerConfig;
   command: CommandConfig;
   monitor: MonitorConfig;
   web: WebConfig;
+  autoContinue: AutoContinueConfig;
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -46,6 +55,13 @@ export const DEFAULT_CONFIG: Config = {
   web: {
     port: 6789,
     host: "0.0.0.0",
+  },
+  autoContinue: {
+    enabled: false,
+    conversationId: "",
+    prompt: "继续",
+    exhaustedThreshold: 20,
+    refreshThreshold: 50,
   },
 };
 
@@ -119,6 +135,14 @@ export function loadConfig(configPath?: string): Config {
       host: typeof parsed.web?.host === "string" ? parsed.web.host : DEFAULT_CONFIG.web.host,
     };
 
+    const autoContinue: AutoContinueConfig = {
+      enabled: typeof parsed.autoContinue?.enabled === "boolean" ? parsed.autoContinue.enabled : DEFAULT_CONFIG.autoContinue.enabled,
+      conversationId: typeof parsed.autoContinue?.conversationId === "string" ? parsed.autoContinue.conversationId : DEFAULT_CONFIG.autoContinue.conversationId,
+      prompt: typeof parsed.autoContinue?.prompt === "string" && parsed.autoContinue.prompt.trim().length > 0 ? parsed.autoContinue.prompt : DEFAULT_CONFIG.autoContinue.prompt,
+      exhaustedThreshold: typeof parsed.autoContinue?.exhaustedThreshold === "number" && parsed.autoContinue.exhaustedThreshold > 0 ? parsed.autoContinue.exhaustedThreshold : DEFAULT_CONFIG.autoContinue.exhaustedThreshold,
+      refreshThreshold: typeof parsed.autoContinue?.refreshThreshold === "number" && parsed.autoContinue.refreshThreshold > 0 ? parsed.autoContinue.refreshThreshold : DEFAULT_CONFIG.autoContinue.refreshThreshold,
+    };
+
     // 检查 startTime 是否早于 endTime
     const startMins = parseTimeToMinutes(scheduler.startTime);
     const endMins = parseTimeToMinutes(scheduler.endTime);
@@ -127,7 +151,7 @@ export function loadConfig(configPath?: string): Config {
       return { ...DEFAULT_CONFIG };
     }
 
-    return { scheduler, command, monitor, web };
+    return { scheduler, command, monitor, web, autoContinue };
   } catch (error) {
     console.error(`[Config] 解析配置文件失败，将使用默认配置。错误信息:`, error);
     return { ...DEFAULT_CONFIG };
@@ -147,6 +171,7 @@ export function validateConfig(cfg: Partial<Config>): Config {
     command: { ...DEFAULT_CONFIG.command, ...(cfg.command || {}) },
     monitor: { ...DEFAULT_CONFIG.monitor, ...(cfg.monitor || {}) },
     web: { ...DEFAULT_CONFIG.web, ...(cfg.web || {}) },
+    autoContinue: { ...DEFAULT_CONFIG.autoContinue, ...(cfg.autoContinue || {}) },
   };
 
   if (!isValidTimeFormat(merged.scheduler.startTime)) {
@@ -181,6 +206,22 @@ export function validateConfig(cfg: Partial<Config>): Config {
   }
   if (typeof merged.web.host !== "string" || merged.web.host.trim().length === 0) {
     throw new ConfigValidationError(`web.host 不能为空`);
+  }
+
+  if (merged.autoContinue.enabled) {
+    const id = merged.autoContinue.conversationId;
+    if (typeof id !== "string" || id.trim().length === 0) {
+      throw new ConfigValidationError(`autoContinue.conversationId 不能为空`);
+    }
+    if (merged.autoContinue.exhaustedThreshold < 0 || merged.autoContinue.exhaustedThreshold > 100) {
+      throw new ConfigValidationError(`autoContinue.exhaustedThreshold 必须在 0-100 之间: ${merged.autoContinue.exhaustedThreshold}`);
+    }
+    if (merged.autoContinue.refreshThreshold < 0 || merged.autoContinue.refreshThreshold > 100) {
+      throw new ConfigValidationError(`autoContinue.refreshThreshold 必须在 0-100 之间: ${merged.autoContinue.refreshThreshold}`);
+    }
+    if (merged.autoContinue.exhaustedThreshold >= merged.autoContinue.refreshThreshold) {
+      throw new ConfigValidationError(`autoContinue.exhaustedThreshold (${merged.autoContinue.exhaustedThreshold}) 必须小于 refreshThreshold (${merged.autoContinue.refreshThreshold})`);
+    }
   }
 
   return merged;

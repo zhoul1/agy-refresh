@@ -1,3 +1,4 @@
+import { quietSpawn } from "./spawn";
 import type { CommandConfig } from "./config";
 
 export interface CommandResult {
@@ -12,8 +13,8 @@ export interface CommandResult {
  */
 export async function runAgyCommand(config: CommandConfig): Promise<CommandResult> {
   try {
-    // 启动子进程
-    const proc = Bun.spawn([config.executable, ...config.args], {
+    // 启动子进程 (静默模式，Windows 下无弹窗)
+    const proc = quietSpawn([config.executable, ...config.args], {
       stdout: "pipe",
       stderr: "pipe",
     });

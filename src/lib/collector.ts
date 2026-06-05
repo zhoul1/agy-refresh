@@ -1,3 +1,4 @@
+import { quietSpawnSync } from "./spawn";
 import { detectAllAgyProcesses, discoverAllListeningPorts, type AgyProcessInfo } from "./agy-process";
 import { collectQuota, type QuotaSnapshot } from "./agy-quota";
 import { saveSnapshot } from "./database";
@@ -12,7 +13,7 @@ function buildPortTokenMap(allProcesses: AgyProcessInfo[], allPids: number[]): M
   const pidSet = new Set(allPids);
 
   try {
-    const stdout = Bun.spawnSync(["netstat", "-ano"]).stdout.toString();
+    const stdout = quietSpawnSync(["netstat", "-ano"]).stdout.toString();
     for (const line of stdout.split("\n")) {
       if (!line.includes("LISTENING")) continue;
       const parts = line.trim().split(/\s+/);

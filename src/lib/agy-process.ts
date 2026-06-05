@@ -1,3 +1,5 @@
+import { quietSpawn } from "./spawn";
+
 export interface AgyProcessInfo {
   pid: number;
   csrfToken?: string;
@@ -18,7 +20,7 @@ export async function detectAllAgyProcesses(): Promise<AgyProcessInfo[]> {
   const results: AgyProcessInfo[] = [];
 
   try {
-    const proc = Bun.spawn(["wmic", "process", 'where', 'name like \'%antigravity%\' or commandline like \'%antigravity%\'', "get", "processid,commandline", "/format:csv"], {
+    const proc = quietSpawn(["wmic", "process", 'where', 'name like \'%antigravity%\' or commandline like \'%antigravity%\'', "get", "processid,commandline", "/format:csv"], {
       stdout: "pipe",
       stderr: "pipe",
     });
@@ -43,7 +45,7 @@ export async function detectAllAgyProcesses(): Promise<AgyProcessInfo[]> {
 
   if (results.length === 0) {
     try {
-      const proc = Bun.spawn(["powershell", "-Command", "Get-CimInstance Win32_Process -Filter \"Name like '%antigravity%'\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"], {
+      const proc = quietSpawn(["powershell", "-Command", "Get-CimInstance Win32_Process -Filter \"Name like '%antigravity%'\" | Select-Object ProcessId,CommandLine | ConvertTo-Json"], {
         stdout: "pipe",
       });
       const out = await new Response(proc.stdout).text();
@@ -85,7 +87,7 @@ export async function discoverAllListeningPorts(allPids: number[]): Promise<numb
   const portSet = new Set<number>();
 
   try {
-    const proc = Bun.spawn(["netstat", "-ano"], { stdout: "pipe" });
+    const proc = quietSpawn(["netstat", "-ano"], { stdout: "pipe" });
     const out = await new Response(proc.stdout).text();
     const pidSet = new Set(allPids);
     for (const line of out.split("\n")) {
@@ -105,7 +107,7 @@ export async function discoverAllListeningPorts(allPids: number[]): Promise<numb
   if (portSet.size === 0) {
     for (const pid of allPids) {
       try {
-        const proc = Bun.spawn(["powershell", "-Command",
+        const proc = quietSpawn(["powershell", "-Command",
           `Get-NetTCPConnection -OwningProcess ${pid} -State Listen | Select-Object -ExpandProperty LocalPort`
         ], { stdout: "pipe" });
         const out = (await new Response(proc.stdout).text()).trim();
