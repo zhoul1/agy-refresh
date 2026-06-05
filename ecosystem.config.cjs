@@ -1,0 +1,19 @@
+module.exports = {
+  apps: [{
+    name: 'agy-scheduler',
+    script: 'src/cli/index.ts',
+    interpreter: 'bun',
+    args: '--all',
+    cwd: __dirname,
+    instances: 1,
+    exec_mode: 'fork',
+    watch: false,
+    max_memory_restart: '256M',
+    restart_delay: 3000,
+    max_restarts: 10,
+    error_file: 'logs/pm2-error.log',
+    out_file: 'logs/pm2-out.log',
+    merge_logs: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+  }]
+};

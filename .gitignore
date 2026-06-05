@@ -35,3 +35,6 @@ cli.exe
 # Runtime data
 data/
 tests/.tmp/
+
+# PM2 logs
+logs/
