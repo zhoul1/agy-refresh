@@ -573,7 +573,7 @@ function renderOverview() {
           return `<tr>
             <td><span class="model-id">${escapeHtml(m.id)}</span></td>
             <td class="model-name">${escapeHtml(m.display || "—")}</td>
-            <td><div class="progress-cell"><div class="bar-wrap"><div class="bar-fill ${progressClass(pct)}" style="width: ${pct}%"></div></div><span class="progress-num">${pct.toFixed(1)}%</span></div></td>
+            <td><div class="progress-cell"><div class="bar-wrap"><div class="bar-remaining" style="width:${m.remainingPct != null ? m.remainingPct.toFixed(1) : 0}%"></div><div class="bar-fill ${progressClass(pct)}" style="width:${pct.toFixed(1)}%"></div></div><span class="progress-num">${pct.toFixed(1)}%</span></div></td>
             <td class="num">${pct.toFixed(1)}%</td>
             <td class="num">${m.remainingPct != null ? m.remainingPct.toFixed(1) + "%" : "—"}</td>
             <td>${m.resetTime ? fmtTime(m.resetTime) : "—"}</td>
