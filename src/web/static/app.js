@@ -703,16 +703,16 @@ function renderScheduler() {
 
   const stopBtn = $("#btnStopDaemon");
   if (stopBtn) stopBtn.onclick = async () => {
-    try { await api.send("/api/scheduler/stop", "POST"); toast(t("toast.stopped"), "success"); }
+    try { await api.send("/api/scheduler/stop", "POST"); await refreshStatus(); renderScheduler(); toast(t("toast.stopped"), "success"); }
     catch (e) { toast(t("toast.stopFail", { msg: e.message }), "error"); }
   };
   const startBtn = $("#btnStartDaemon");
   if (startBtn) startBtn.onclick = async () => {
-    try { await api.send("/api/scheduler/start", "POST"); toast(t("toast.started"), "success"); }
+    try { await api.send("/api/scheduler/start", "POST"); await refreshStatus(); renderScheduler(); toast(t("toast.started"), "success"); }
     catch (e) { toast(t("toast.startFail", { msg: e.message }), "error"); }
   };
   $("#btnRunNow").onclick = async () => {
-    try { toast(t("toast.executing"), "info"); await api.send("/api/scheduler/run-now", "POST"); toast(t("toast.triggered"), "success"); }
+    try { toast(t("toast.executing"), "info"); await api.send("/api/scheduler/run-now", "POST"); await refreshStatus(); await refreshExecutionHistory(); renderScheduler(); toast(t("toast.triggered"), "success"); }
     catch (e) { toast(t("toast.executeFail", { msg: e.message }), "error"); }
   };
   bindExecutionRowToggles();
