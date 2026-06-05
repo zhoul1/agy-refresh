@@ -718,7 +718,10 @@ function renderScheduler() {
   bindExecutionRowToggles();
 }
 
-function renderTrends() {
+async function renderTrends() {
+  if (Store.quotaHistory.length === 0) {
+    await refreshQuotaHistory(Store.trendsHours);
+  }
   const html = [];
   html.push(`<div class="tabs-row">
     <div class="tab ${Store.trendsHours === 24 ? "active" : ""}" data-hours="24">${t("trends.24h")}</div>
