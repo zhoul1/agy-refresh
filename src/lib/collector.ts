@@ -35,7 +35,10 @@ export async function collectOnce(agyTimeoutMs = 10000): Promise<QuotaSnapshot> 
   appendLog("monitor", "info", `开始探测 agy 进程...`);
   const allProcesses = await detectAllAgyProcesses();
   if (allProcesses.length === 0) {
-    throw new Error("agy language server not found. Is agy running?");
+    throw new Error(
+      "AGy process not found. Please open AGy (antigravity IDE / AG 2.0 / ag CLI) first.\n" +
+      "未找到 AGy 进程，请先启动 antigravity IDE、AG 2.0 或 ag CLI"
+    );
   }
 
   const allPids = allProcesses.map(p => p.pid);
@@ -47,7 +50,10 @@ export async function collectOnce(agyTimeoutMs = 10000): Promise<QuotaSnapshot> 
   const allPorts = [...new Set([...cmdPorts, ...listeningPorts])];
 
   if (allPorts.length === 0) {
-    throw new Error("No ports found. Is agy language server running?");
+    throw new Error(
+      "No AGy listening ports found. Please open AGy (antigravity IDE / AG 2.0 / ag CLI) first.\n" +
+      "未找到 AGy 监听端口，请先启动 antigravity IDE、AG 2.0 或 ag CLI"
+    );
   }
 
   const portTokenMap = buildPortTokenMap(allProcesses, allPids);

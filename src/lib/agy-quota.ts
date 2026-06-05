@@ -155,7 +155,10 @@ export async function collectQuota(
   }
 
   if (!endpoint) {
-    throw new Error("Could not find Connect API endpoint. Is agy running?");
+    throw new Error(
+      "Cannot reach AGy Connect API. Make sure AGy is running (antigravity IDE / AG 2.0 / ag CLI).\n" +
+      "无法连接 AGy Connect API，请确认 AGy 已启动（antigravity IDE、AG 2.0 或 ag CLI）"
+    );
   }
 
   console.log(`[Quota] Found Connect API at ${endpoint.baseUrl}${endpoint.csrfToken ? " (with token)" : ""}`);
