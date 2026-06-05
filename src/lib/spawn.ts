@@ -9,6 +9,7 @@ export function quietSpawn(args: string[], opts?: { stdout?: "pipe" | "inherit" 
       windowsHide: true,
       stdio: ["pipe", opts?.stdout === "pipe" ? "pipe" : "ignore", opts?.stderr === "pipe" ? "pipe" : "ignore"],
     } as SpawnOptionsWithoutStdio);
+    child.on("error", () => {});
     return {
       stdout: child.stdout ? Readable.toWeb(child.stdout) as ReadableStream : null,
       stderr: child.stderr ? Readable.toWeb(child.stderr) as ReadableStream : null,
