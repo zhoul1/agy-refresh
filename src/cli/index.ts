@@ -31,7 +31,7 @@ function showHelp() {
 
   推荐流程:
     bun run start --all
-    然后浏览器打开 http://localhost:3000 即可控制一切
+    然后浏览器打开 http://localhost:6789 即可控制一切
 `);
 }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" id="htmlEl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -13,8 +13,8 @@
       <div class="brand">
         <div class="brand-icon">⚡</div>
         <div class="brand-text">
-          <div class="brand-title">Agy 控制中心</div>
-          <div class="brand-sub">定时调度 + 额度监控</div>
+          <div class="brand-title" id="brandTitle">Agy 控制中心</div>
+          <div class="brand-sub" id="brandSub">定时调度 + 额度监控</div>
         </div>
       </div>
       <nav class="nav">
@@ -54,6 +54,7 @@
           <div class="status-pill" id="monitorPill">
             <span class="dot"></span><span>监控: --</span>
           </div>
+          <button class="btn btn-sm btn-ghost lang-btn" id="langToggle" title="Switch language">English</button>
         </div>
       </header>
       <section class="content" id="content"></section>

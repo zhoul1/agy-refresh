@@ -44,7 +44,7 @@ export const DEFAULT_CONFIG: Config = {
     agyTimeoutMs: 10000,
   },
   web: {
-    port: 3000,
+    port: 6789,
     host: "0.0.0.0",
   },
 };

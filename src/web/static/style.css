@@ -243,6 +243,7 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .btn-success:hover { background: #15803d; }
 .btn-sm { padding: 5px 10px; font-size: 12px; }
 .btn-ghost { background: transparent; border: 1px solid var(--border); }
+.lang-btn { font-size: 11px !important; padding: 4px 10px !important; min-width: 60px; justify-content: center; }
 
 .form-group { margin-bottom: 16px; }
 .form-label {
