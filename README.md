@@ -13,9 +13,9 @@
 
 # AGy Refresh ⚡
 
-**AI对话自动续杯 — 定时调度 · 额度监控 · 历史趋势**
+**AI对话自动续杯 / Auto-refresh Usage Quota — 定时调度 · 额度监控 · 历史趋势**
 
-AGy (antigravity) 用户的用量看板 + 自动保活工具。\
+AGy (antigravity) / Codeium AI Assistant 用户的用量看板 + 自动保活工具。\
 自动执行对话以刷新用量周期，持续采集额度数据到 SQLite，并通过 Web 仪表盘可视化历史趋势。
 
 </div>

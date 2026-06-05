@@ -1,7 +1,19 @@
 {
   "name": "agy-refresh",
   "version": "1.0.0",
-  "description": "Auto call agy cli regularly using Bun TS",
+  "description": "Auto-refresh AGy / antigravity / Codeium AI assistant usage quota — scheduled execution, quota monitoring, historical trends dashboard, built with Bun + Elysia",
+  "keywords": [
+    "antigravity",
+    "codeium",
+    "ai-assistant",
+    "agi",
+    "quota-monitor",
+    "usage-tracker",
+    "auto-refresh",
+    "bun",
+    "dashboard",
+    "scheduler"
+  ],
   "type": "module",
   "scripts": {
     "start": "bun run src/cli/index.ts",

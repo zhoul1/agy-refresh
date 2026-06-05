@@ -13,10 +13,12 @@
 
 # AGy Refresh ⚡
 
-**Auto-refresh your AI usage quota — Scheduled execution · Quota monitoring · Historical trends**
+**Anti-starvation quota auto-refresh tool for AGy / Codeium AI Assistant — Scheduled execution · Quota monitoring · Historical trends**
 
-A web dashboard + scheduler for AGy (antigravity) users.\
+A web dashboard + background scheduler that monitors your AGy (antigravity) / Codeium AI assistant usage quota.\
 Automatically executes conversations to reset usage cycles, continuously collects quota data into SQLite, and visualizes historical trends through a web dashboard.
+
+Perfect for: **AGy users, Codeium users, antigravity IDE users** who want to **auto-refresh AI usage quota, track quota history, and never run out of daily credits.**
 
 </div>
 
