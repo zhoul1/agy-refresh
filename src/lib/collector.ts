@@ -1,9 +1,10 @@
 import { quietSpawnSync } from "./spawn";
 import { detectAllAgyProcesses, discoverAllListeningPorts, type AgyProcessInfo } from "./agy-process";
 import { collectQuota, type QuotaSnapshot } from "./agy-quota";
-import { saveSnapshot } from "./database";
-import type { MonitorConfig } from "./config";
-import { appendLog, setMonitorNextCollectAt, recordMonitorCollection, recordMonitorFailure } from "./runtime";
+import { saveSnapshot, saveAutoContinueLog, getLatestAutoContinueLog } from "./database";
+import { loadConfig, type MonitorConfig, type AutoContinueConfig } from "./config";
+import { appendLog, setMonitorNextCollectAt, recordMonitorCollection, recordMonitorFailure, recordAutoContinueTrigger, setAutoContinueState } from "./runtime";
+import { continueConversation } from "./executor";
 
 function buildPortTokenMap(allProcesses: AgyProcessInfo[], allPids: number[]): Map<number, string> {
   const procByPid = new Map<number, AgyProcessInfo>();
@@ -86,6 +87,63 @@ export async function collectOnce(agyTimeoutMs = 10000): Promise<QuotaSnapshot> 
   return snapshot;
 }
 
+export async function maybeTriggerAutoContinue(snapshot: QuotaSnapshot): Promise<void> {
+  const config = loadConfig();
+  const ac = config.autoContinue;
+  if (!ac.enabled) return;
+  if (!ac.conversationId) {
+    appendLog("monitor", "warn", "AutoContinue 已启用但 conversationId 为空");
+    return;
+  }
+
+  const latestLog = getLatestAutoContinueLog();
+  const lastAvgUsed = latestLog?.quota_used_after ?? null;
+  const avgUsed = snapshot.models.length > 0
+    ? snapshot.models.reduce((sum, m) => sum + (m.usedPercentage ?? 0), 0) / snapshot.models.length
+    : 0;
+  const avgRemaining = snapshot.models.length > 0
+    ? snapshot.models.reduce((sum, m) => sum + (m.remainingPercentage ?? 0), 0) / snapshot.models.length
+    : 0;
+
+  if (lastAvgUsed !== null && lastAvgUsed > ac.exhaustedThreshold && avgRemaining > ac.refreshThreshold) {
+    appendLog("monitor", "info", `AutoContinue 触发: 已用从 ${lastAvgUsed.toFixed(1)}% → ${avgUsed.toFixed(1)}%, 刷新至 ${avgRemaining.toFixed(1)}%`);
+    const result = await continueConversation(ac, config.command.executable);
+    const logId = saveAutoContinueLog({
+      success: result.success,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      durationMs: result.durationMs,
+      conversationId: ac.conversationId,
+      prompt: ac.prompt,
+      quotaUsedBefore: lastAvgUsed,
+      quotaUsedAfter: avgUsed,
+    });
+    recordAutoContinueTrigger({
+      success: result.success,
+      stdout: result.stdout,
+      stderr: result.stderr,
+      durationMs: result.durationMs,
+      conversationId: ac.conversationId,
+      prompt: ac.prompt,
+      quotaUsedBefore: lastAvgUsed,
+      quotaUsedAfter: avgUsed,
+      logId,
+    });
+    if (result.success) {
+      appendLog("monitor", "info", `AutoContinue 成功 (id=${logId}), 耗时 ${result.durationMs}ms`);
+    } else {
+      appendLog("monitor", "error", `AutoContinue 失败 (id=${logId}): ${result.stderr.substring(0, 200)}`);
+    }
+  } else {
+    setAutoContinueState({
+      lastAvgUsed: avgUsed,
+      lastAvgRemaining: avgRemaining,
+      exhaustedThreshold: ac.exhaustedThreshold,
+      refreshThreshold: ac.refreshThreshold,
+    });
+  }
+}
+
 export function startMonitor(cfg: MonitorConfig, onCollect?: () => void) {
   const intervalMs = cfg.intervalMinutes * 60 * 1000;
   appendLog("monitor", "info", `启动定时采集，间隔=${cfg.intervalMinutes} 分钟`);
@@ -97,8 +155,9 @@ export function startMonitor(cfg: MonitorConfig, onCollect?: () => void) {
 
   async function tick() {
     try {
-      await collectOnce(cfg.agyTimeoutMs);
+      const snapshot = await collectOnce(cfg.agyTimeoutMs);
       onCollect?.();
+      await maybeTriggerAutoContinue(snapshot);
     } catch (err: any) {
       appendLog("monitor", "error", `采集失败: ${err.message || String(err)}`);
       recordMonitorFailure(err.message || String(err));

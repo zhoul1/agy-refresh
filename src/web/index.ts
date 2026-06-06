@@ -9,7 +9,9 @@ import {
   getRecords,
   getRecentExecutions,
   getLatestExecution,
+  getAutoContinueLogs,
   type DaemonExecutionRow,
+  type AutoContinueLogRow,
 } from "../lib/database";
 import {
   loadConfig,
@@ -28,7 +30,9 @@ import {
   stopMonitor,
   onEvent,
   offEvent,
+  getAutoContinueState,
   type LogEntry,
+  type AutoContinueState,
 } from "../lib/runtime";
 import { runDaemonOnce } from "../lib/daemon";
 import { collectOnce } from "../lib/collector";
@@ -192,6 +196,15 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
     }
   });
 
+  app.get("/api/monitor/auto-continue/status", () => {
+    return getAutoContinueState();
+  });
+
+  app.get("/api/monitor/auto-continue/logs", ({ query }) => {
+    const limit = Math.min(parseInt(String(query.limit ?? "50"), 10) || 50, 500);
+    return getAutoContinueLogs(limit);
+  });
+
   app.get("/api/quota/latest", () => {
     const { record, models } = getLatestWithModels();
     if (!record) return { error: "no data" };
@@ -274,6 +287,8 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
           ["monitor:collected", (d) => send("monitor", { type: "collected", ...d })],
           ["monitor:failed", (d) => send("monitor", { type: "failed", ...d })],
           ["log", (d: LogEntry) => send("log", d)],
+          ["autocontinue:triggered", (d) => send("autocontinue", { type: "triggered", ...d })],
+          ["autocontinue:state", (d: AutoContinueState) => send("autocontinue", { type: "state", ...d })],
         ];
         for (const [name, h] of handlers) onEvent(name as any, h as any);
 

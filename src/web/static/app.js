@@ -140,6 +140,33 @@ const LOCALE_DATA = {
     "logs.level": "级别:",
     "logs.all": "全部",
     "logs.clear": "清空显示",
+    "autocontinue.cardTitle": "自动续杯",
+    "autocontinue.enabled": "已启用",
+    "autocontinue.disabled": "已关闭",
+    "autocontinue.lastTrigger": "最近触发",
+    "autocontinue.totalSuccess": "已成功续杯 {{n}} 次",
+    "autocontinue.target": "目标对话",
+    "autocontinue.notYet": "尚未触发",
+    "autocontinue.settingsTitle": "自动续杯设置",
+    "autocontinue.settingsSub": "额度耗尽后自动发送「继续」。每次额度采集时检查阈值，条件满足时触发一次。",
+    "autocontinue.enableLabel": "启用自动续杯",
+    "autocontinue.conversationId": "对话 UUID",
+    "autocontinue.conversationIdHint": "从 agy TUI → /resume → 退出时复制 UUID",
+    "autocontinue.prompt": "发送消息",
+    "autocontinue.exhaustedThreshold": "耗尽阈值 %",
+    "autocontinue.exhaustedThresholdHint": "平均剩余低于此值视为「额度已耗尽」",
+    "autocontinue.refreshThreshold": "刷新阈值 %",
+    "autocontinue.refreshThresholdHint": "平均剩余高于此值视为「额度已刷新」",
+    "autocontinue.logTitle": "触发历史",
+    "autocontinue.logTime": "时间",
+    "autocontinue.logResult": "结果",
+    "autocontinue.logDuration": "耗时",
+    "autocontinue.logBefore": "触发前",
+    "autocontinue.logAfter": "触发后",
+    "autocontinue.success": "成功",
+    "autocontinue.fail": "失败",
+    "autocontinue.saved": "AutoContinue 设置已保存",
+    "autocontinue.saveFailed": "保存失败: {{msg}}",
     "time.soon": "即将",
     "time.secondsAgo": "{{n}} 秒前",
     "time.minutesAgo": "{{n}} 分钟前",
@@ -296,6 +323,33 @@ const LOCALE_DATA = {
     "logs.level": "Level:",
     "logs.all": "All",
     "logs.clear": "Clear",
+    "autocontinue.cardTitle": "Auto Continue",
+    "autocontinue.enabled": "Enabled",
+    "autocontinue.disabled": "Disabled",
+    "autocontinue.lastTrigger": "Last Trigger",
+    "autocontinue.totalSuccess": "Refilled {{n}} times",
+    "autocontinue.target": "Target",
+    "autocontinue.notYet": "Not yet triggered",
+    "autocontinue.settingsTitle": "Auto Continue Settings",
+    "autocontinue.settingsSub": "Automatically send 'continue' when quota refreshes. Checked on each quota collection.",
+    "autocontinue.enableLabel": "Enable Auto Continue",
+    "autocontinue.conversationId": "Conversation UUID",
+    "autocontinue.conversationIdHint": "Copy from agy TUI → /resume → exit prompt",
+    "autocontinue.prompt": "Prompt",
+    "autocontinue.exhaustedThreshold": "Exhaust Threshold %",
+    "autocontinue.exhaustedThresholdHint": "Average remaining below this = exhausted",
+    "autocontinue.refreshThreshold": "Refresh Threshold %",
+    "autocontinue.refreshThresholdHint": "Average remaining above this = refreshed",
+    "autocontinue.logTitle": "Trigger History",
+    "autocontinue.logTime": "Time",
+    "autocontinue.logResult": "Result",
+    "autocontinue.logDuration": "Duration",
+    "autocontinue.logBefore": "Before",
+    "autocontinue.logAfter": "After",
+    "autocontinue.success": "Success",
+    "autocontinue.fail": "Fail",
+    "autocontinue.saved": "AutoContinue settings saved",
+    "autocontinue.saveFailed": "Save failed: {{msg}}",
     "time.soon": "Soon",
     "time.secondsAgo": "{{n}}s ago",
     "time.minutesAgo": "{{n}}m ago",
@@ -360,6 +414,8 @@ const Store = {
   countdownTimer: null,
   lastEventAt: Date.now(),
   saving: false,
+  autoContinueLogs: [],
+  autoContinueState: null,
 };
 
 const PageTitles = {
@@ -466,8 +522,15 @@ function toast(msg, type = "info") {
 
 async function refreshStatus() {
   try {
-    Store.status = await api.get("/api/status");
+    const data = await api.get("/api/status");
+    Store.status = data;
+    if (data.autoContinue) Store.autoContinueState = data.autoContinue;
   } catch (e) { console.warn("status refresh failed", e); }
+}
+async function refreshAutoContinueState() {
+  try {
+    Store.autoContinueState = await api.get("/api/monitor/auto-continue/status");
+  } catch (e) { /* no data yet */ }
 }
 async function refreshLatestQuota() {
   try {
@@ -499,6 +562,11 @@ async function refreshQuotaHistory(hours) {
 }
 async function refreshLogs() {
   Store.logs = await api.get("/api/logs?limit=300");
+}
+async function refreshAutoContinueLogs() {
+  try {
+    Store.autoContinueLogs = await api.get("/api/monitor/auto-continue/logs?limit=20");
+  } catch (e) { /* no data yet */ }
 }
 
 function renderTopbar() {
@@ -606,6 +674,23 @@ function renderOverview() {
         <tr><td style="color:var(--text-3)">${t("monitor.lastCollect")}</td><td>${s?.monitor?.lastCollectionAt ? fmtAgo(s.monitor.lastCollectionAt) : "—"}</td></tr>
         <tr><td style="color:var(--text-3)">${t("monitor.lastError")}</td><td>${s?.monitor?.lastError ? `<span class="badge badge-danger">${escapeHtml(s.monitor.lastError)}</span>` : "—"}</td></tr>
       </table>
+    </div>
+  </div>`);
+
+  const ac = s?.autoContinue || Store.autoContinueState || null;
+  const acEnabled = Store.config?.autoContinue?.enabled;
+  html.push(`<div class="card">
+    <div class="card-title">${t("autocontinue.cardTitle")} <span class="card-title-sub">${acEnabled ? '<span class="badge badge-success">' + t("autocontinue.enabled") + '</span>' : '<span class="badge badge-neutral">' + t("autocontinue.disabled") + '</span>'}</span></div>
+    <div class="grid-2" style="margin-bottom:0">
+      <div>
+        <div class="metric-label">${t("autocontinue.lastTrigger")}</div>
+        <div style="margin-top:6px">${ac?.lastTrigger ? fmtAgo(ac.lastTrigger.run_at || ac.lastTrigger.runAt) + ' ' + (ac.lastTrigger.success ? '<span class="badge badge-success">' + t("autocontinue.success") + '</span>' : '<span class="badge badge-danger">' + t("autocontinue.fail") + '</span>') : '<span class="badge badge-neutral">' + t("autocontinue.notYet") + '</span>'}</div>
+        <div class="metric-extra">${ac?.lastAvgUsed != null ? ac.lastAvgUsed.toFixed(1) + '% → ' + (ac?.lastAvgRemaining != null ? ac.lastAvgRemaining.toFixed(1) + '%' : '—') : ''}</div>
+      </div>
+      <div>
+        <div class="metric-label">${t("autocontinue.target")}</div>
+        <div style="margin-top:6px;font-family:monospace;font-size:12px;color:var(--text-2)">${Store.config?.autoContinue?.conversationId ? escapeHtml(Store.config.autoContinue.conversationId.substring(0, 8) + "…") : "—"}</div>
+      </div>
     </div>
   </div>`);
 
@@ -877,6 +962,59 @@ function renderSettings() {
     </div>
   </div>`);
 
+  const ac = Store.config?.autoContinue;
+  html.push(`<div class="card">
+    <div class="card-title">${t("autocontinue.settingsTitle")}</div>
+    <div class="fieldset-sub">${t("autocontinue.settingsSub")}</div>
+    <div class="form-group">
+      <label class="form-label" style="display:flex;align-items:center;gap:8px">
+        <input type="checkbox" id="cfg-ac-enabled" ${ac?.enabled ? 'checked' : ''} style="width:16px;height:16px">
+        ${t("autocontinue.enableLabel")}
+      </label>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("autocontinue.conversationId")}</label>
+      <input class="form-input" type="text" id="cfg-ac-conversationId" value="${escapeAttr(ac?.conversationId || '')}" placeholder="0891d29c-6b8f-40d0-9857-408586519998">
+      <div class="form-hint">${t("autocontinue.conversationIdHint")}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("autocontinue.prompt")}</label>
+      <input class="form-input" type="text" id="cfg-ac-prompt" value="${escapeAttr(ac?.prompt || '继续')}">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">${t("autocontinue.exhaustedThreshold")}</label>
+        <input class="form-input" type="number" id="cfg-ac-exhausted" value="${ac?.exhaustedThreshold ?? 20}" min="0" max="100">
+        <div class="form-hint">${t("autocontinue.exhaustedThresholdHint")}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t("autocontinue.refreshThreshold")}</label>
+        <input class="form-input" type="number" id="cfg-ac-refresh" value="${ac?.refreshThreshold ?? 50}" min="0" max="100">
+        <div class="form-hint">${t("autocontinue.refreshThresholdHint")}</div>
+      </div>
+    </div>
+  </div>`);
+
+  if (Store.autoContinueLogs.length > 0) {
+    html.push(`<div class="card">
+      <div class="card-title">${t("autocontinue.logTitle")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>
+      <table>
+        <thead><tr>
+          <th>${t("autocontinue.logTime")}</th><th>${t("autocontinue.logResult")}</th><th class="num">${t("autocontinue.logDuration")}</th><th class="num">${t("autocontinue.logBefore")}</th><th class="num">${t("autocontinue.logAfter")}</th>
+        </tr></thead>
+        <tbody>
+        ${Store.autoContinueLogs.map((r) => `<tr>
+          <td>${fmtTime(r.run_at, true)}</td>
+          <td><span class="badge ${r.success ? 'badge-success' : 'badge-danger'}">${r.success ? t("autocontinue.success") : t("autocontinue.fail")}</span></td>
+          <td class="num">${r.duration_ms != null ? r.duration_ms + ' ms' : '—'}</td>
+          <td class="num">${r.quota_used_before != null ? r.quota_used_before.toFixed(1) + '%' : '—'}</td>
+          <td class="num">${r.quota_used_after != null ? r.quota_used_after.toFixed(1) + '%' : '—'}</td>
+        </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>`);
+  }
+
   html.push(`<div class="action-bar" style="margin-bottom: 30px">
     <button class="btn btn-primary" id="btnSaveConfig">${t("settings.save")}</button>
     <button class="btn" id="btnReloadConfig">${t("settings.reload")}</button>
@@ -905,7 +1043,17 @@ function renderSettings() {
           intervalMinutes: parseInt($("#cfg-monInterval").value, 10),
           agyTimeoutMs: parseInt($("#cfg-agyTimeout").value, 10),
         },
+<<<<<<< HEAD
         web: { trayEnabled },
+=======
+        autoContinue: {
+          enabled: $("#cfg-ac-enabled").checked,
+          conversationId: $("#cfg-ac-conversationId").value.trim(),
+          prompt: $("#cfg-ac-prompt").value.trim() || "继续",
+          exhaustedThreshold: parseInt($("#cfg-ac-exhausted").value, 10) || 20,
+          refreshThreshold: parseInt($("#cfg-ac-refresh").value, 10) || 50,
+        },
+>>>>>>> 63a0d5a (fix: add PowerShell -WindowStyle Hidden + cmd /q for reliable window suppression on Windows)
       };
       Store.config = await api.send("/api/config", "PUT", payload);
       toast(t("toast.saved"), "success");
@@ -927,8 +1075,16 @@ function renderSettings() {
     $("#cfg-args").value = "--prompt 你好";
     $("#cfg-monInterval").value = "10";
     $("#cfg-agyTimeout").value = "10000";
+<<<<<<< HEAD
     const tb = $("#cfg-trayEnabled");
     if (tb) tb.checked = false;
+=======
+    $("#cfg-ac-enabled").checked = false;
+    $("#cfg-ac-conversationId").value = "";
+    $("#cfg-ac-prompt").value = "继续";
+    $("#cfg-ac-exhausted").value = "20";
+    $("#cfg-ac-refresh").value = "50";
+>>>>>>> 63a0d5a (fix: add PowerShell -WindowStyle Hidden + cmd /q for reliable window suppression on Windows)
     toast(t("toast.resetDone"), "info");
   };
 }
@@ -1060,6 +1216,13 @@ function connectSSE() {
     }
     renderTopbar();
   }));
+  es.addEventListener("autocontinue", onEvent((d) => {
+    refreshStatus();
+    refreshAutoContinueLogs();
+    if (location.hash === "#overview" || location.hash === "#settings") {
+      setRoute(location.hash.replace("#", "") || "overview");
+    }
+  }));
   es.addEventListener("log", onEvent((entry) => {
     Store.logs.push(entry);
     if (Store.logs.length > 500) Store.logs.splice(0, Store.logs.length - 500);
@@ -1080,6 +1243,8 @@ async function boot() {
   await refreshLatestQuota();
   await refreshExecutionHistory();
   await refreshLogs();
+  await refreshAutoContinueLogs();
+  await refreshAutoContinueState();
   renderTopbar();
   applyI18n();
   $("#langToggle").onclick = () => {

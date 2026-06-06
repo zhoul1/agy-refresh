@@ -32,6 +32,7 @@ export interface MonitorState {
 export interface RuntimeStatus {
   daemon: DaemonState;
   monitor: MonitorState;
+  autoContinue: AutoContinueState;
   uptime: number;
 }
 
@@ -45,8 +46,30 @@ export type RuntimeEventName =
   | "monitor:tick"
   | "monitor:collected"
   | "monitor:failed"
+  | "autocontinue:triggered"
+  | "autocontinue:state"
   | "log"
   | "status";
+
+export interface AutoContinueState {
+  lastAvgUsed: number | null;
+  lastAvgRemaining: number | null;
+  exhaustedThreshold: number;
+  refreshThreshold: number;
+  lastTrigger: AutoContinueTriggerInfo | null;
+}
+
+export interface AutoContinueTriggerInfo {
+  success: boolean;
+  stdout: string;
+  stderr: string;
+  durationMs: number;
+  conversationId: string;
+  prompt: string;
+  quotaUsedBefore: number;
+  quotaUsedAfter: number;
+  logId: number;
+}
 
 export type RuntimeEventPayloads = {
   "daemon:start": void;
@@ -58,6 +81,8 @@ export type RuntimeEventPayloads = {
   "monitor:tick": { nextCollectAt: Date };
   "monitor:collected": { recordId: number; modelCount: number; creditsLimit?: number; email?: string };
   "monitor:failed": { error: string };
+  "autocontinue:triggered": AutoContinueTriggerInfo;
+  "autocontinue:state": AutoContinueState;
   "log": LogEntry;
   "status": void;
 };
@@ -121,6 +146,14 @@ const monitor: MonitorState = {
   lastError: null,
 };
 
+const autoContinue: AutoContinueState = {
+  lastAvgUsed: null,
+  lastAvgRemaining: null,
+  exhaustedThreshold: 20,
+  refreshThreshold: 50,
+  lastTrigger: null,
+};
+
 const startedAt = new Date();
 const emitter = new TypedEmitter();
 const logs = new CircularBuffer<LogEntry>(LOG_CAPACITY);
@@ -159,8 +192,28 @@ export function getStatus(): RuntimeStatus {
   return {
     daemon: { ...daemon },
     monitor: { ...monitor },
+    autoContinue: { ...autoContinue },
     uptime: Date.now() - startedAt.getTime(),
   };
+}
+
+export function setAutoContinueState(state: Omit<AutoContinueState, "lastTrigger">): void {
+  autoContinue.lastAvgUsed = state.lastAvgUsed;
+  autoContinue.lastAvgRemaining = state.lastAvgRemaining;
+  autoContinue.exhaustedThreshold = state.exhaustedThreshold;
+  autoContinue.refreshThreshold = state.refreshThreshold;
+  emitter.emit("autocontinue:state", { ...autoContinue });
+  emitter.emit("status", undefined);
+}
+
+export function recordAutoContinueTrigger(info: AutoContinueTriggerInfo): void {
+  autoContinue.lastTrigger = info;
+  emitter.emit("autocontinue:triggered", info);
+  emitter.emit("status", undefined);
+}
+
+export function getAutoContinueState(): AutoContinueState {
+  return { ...autoContinue };
 }
 
 export function onEvent<K extends RuntimeEventName>(name: K, listener: (payload: RuntimeEventPayloads[K]) => void): void {
@@ -183,6 +236,8 @@ export function subscribe(listener: () => void): () => void {
   emitter.on("monitor:stop", onStatus);
   emitter.on("monitor:collected", onStatus);
   emitter.on("monitor:failed", onStatus);
+  emitter.on("autocontinue:triggered", onStatus);
+  emitter.on("autocontinue:state", onStatus);
   return () => {
     emitter.off("status", onStatus);
     emitter.off("daemon:tick", onStatus);
@@ -194,6 +249,8 @@ export function subscribe(listener: () => void): () => void {
     emitter.off("monitor:stop", onStatus);
     emitter.off("monitor:collected", onStatus);
     emitter.off("monitor:failed", onStatus);
+    emitter.off("autocontinue:triggered", onStatus);
+    emitter.off("autocontinue:state", onStatus);
   };
 }
 
@@ -346,6 +403,11 @@ export function resetRuntimeForTests(): void {
   monitor.nextCollectAt = null;
   monitor.lastCollectionAt = null;
   monitor.lastError = null;
+  autoContinue.lastAvgUsed = null;
+  autoContinue.lastAvgRemaining = null;
+  autoContinue.exhaustedThreshold = 20;
+  autoContinue.refreshThreshold = 50;
+  autoContinue.lastTrigger = null;
   logs.clear();
   emitter.removeAllListeners();
 }

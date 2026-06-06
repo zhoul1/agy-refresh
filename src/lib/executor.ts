@@ -1,5 +1,5 @@
 import { quietSpawn } from "./spawn";
-import type { CommandConfig } from "./config";
+import type { CommandConfig, AutoContinueConfig } from "./config";
 
 export interface CommandResult {
   success: boolean;
@@ -35,8 +35,37 @@ export async function runAgyCommand(config: CommandConfig): Promise<CommandResul
     return {
       success: false,
       stdout: "",
-      // 如果找不到可执行文件，Bun.spawn 可能会抛出错误，在此处捕获
       stderr: error?.message || String(error),
+    };
+  }
+}
+
+export interface ContinueConversationResult extends CommandResult {
+  durationMs: number;
+}
+
+export async function continueConversation(cfg: AutoContinueConfig, executable = "agy"): Promise<ContinueConversationResult> {
+  const start = Date.now();
+  try {
+    const proc = quietSpawn([executable, "--conversation", cfg.conversationId, "-p", cfg.prompt], {
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    const stdoutText = await new Response(proc.stdout).text();
+    const stderrText = await new Response(proc.stderr).text();
+    const exitCode = await proc.exited;
+    return {
+      success: exitCode === 0,
+      stdout: stdoutText,
+      stderr: stderrText,
+      durationMs: Date.now() - start,
+    };
+  } catch (error: any) {
+    return {
+      success: false,
+      stdout: "",
+      stderr: error?.message || String(error),
+      durationMs: Date.now() - start,
     };
   }
 }

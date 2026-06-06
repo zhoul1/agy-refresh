@@ -216,3 +216,60 @@ export function getLatestExecution(): DaemonExecutionRow | null {
   const rows = db.query(`SELECT * FROM daemon_executions ORDER BY run_at DESC LIMIT 1`).all() as DaemonExecutionRow[];
   return rows[0] || null;
 }
+
+export interface AutoContinueLogRow {
+  id: number;
+  run_at: string;
+  success: number;
+  stdout: string | null;
+  stderr: string | null;
+  duration_ms: number | null;
+  conversation_id: string | null;
+  prompt: string | null;
+  quota_used_before: number | null;
+  quota_used_after: number | null;
+}
+
+export interface AutoContinueLogSaveInput {
+  success: boolean;
+  stdout?: string;
+  stderr?: string;
+  durationMs?: number;
+  conversationId?: string;
+  prompt?: string;
+  quotaUsedBefore?: number;
+  quotaUsedAfter?: number;
+  runAt?: string;
+}
+
+export function saveAutoContinueLog(input: AutoContinueLogSaveInput): number {
+  const db = getDb();
+  const runAt = input.runAt || new Date().toISOString();
+  const stmt = db.prepare(`
+    INSERT INTO auto_continue_logs (run_at, success, stdout, stderr, duration_ms, conversation_id, prompt, quota_used_before, quota_used_after)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const info = stmt.run(
+    runAt,
+    input.success ? 1 : 0,
+    input.stdout ?? null,
+    input.stderr ?? null,
+    input.durationMs ?? null,
+    input.conversationId ?? null,
+    input.prompt ?? null,
+    input.quotaUsedBefore ?? null,
+    input.quotaUsedAfter ?? null,
+  );
+  return Number(info.lastInsertRowid);
+}
+
+export function getAutoContinueLogs(limit = 50): AutoContinueLogRow[] {
+  const db = getDb();
+  return db.query(`SELECT * FROM auto_continue_logs ORDER BY run_at DESC LIMIT ?`).all(limit) as AutoContinueLogRow[];
+}
+
+export function getLatestAutoContinueLog(): AutoContinueLogRow | null {
+  const db = getDb();
+  const rows = db.query(`SELECT * FROM auto_continue_logs ORDER BY run_at DESC LIMIT 1`).all() as AutoContinueLogRow[];
+  return rows[0] || null;
+}
