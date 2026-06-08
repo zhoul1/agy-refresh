@@ -44,6 +44,13 @@ export function initSchema(db: Database) {
       prompt_credits_remaining INTEGER
     )
   `);
+  // Add new columns if they don't exist (migration)
+  try { db.run("ALTER TABLE quota_records ADD COLUMN name TEXT"); } catch {}
+  try { db.run("ALTER TABLE quota_records ADD COLUMN plan_name TEXT"); } catch {}
+  try { db.run("ALTER TABLE quota_records ADD COLUMN flow_credits_used INTEGER"); } catch {}
+  try { db.run("ALTER TABLE quota_records ADD COLUMN flow_credits_limit INTEGER"); } catch {}
+  try { db.run("ALTER TABLE quota_records ADD COLUMN flow_credits_remaining INTEGER"); } catch {}
+  try { db.run("ALTER TABLE quota_records ADD COLUMN google_one_ai_credits INTEGER"); } catch {}
   db.run(`
     CREATE TABLE IF NOT EXISTS model_quotas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,8 +98,8 @@ export function saveSnapshot(snapshot: QuotaSnapshot): number {
   const db = getDb();
   const now = new Date().toISOString();
   const insert = db.prepare(`
-    INSERT INTO quota_records (recorded_at, email, raw_json, prompt_credits_used, prompt_credits_limit, prompt_credits_remaining)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO quota_records (recorded_at, email, name, plan_name, raw_json, prompt_credits_used, prompt_credits_limit, prompt_credits_remaining, flow_credits_used, flow_credits_limit, flow_credits_remaining, google_one_ai_credits)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertModel = db.prepare(`
     INSERT INTO model_quotas (record_id, model_id, display_name, used_pct, remaining_pct, reset_time, is_exhausted)
@@ -100,9 +107,12 @@ export function saveSnapshot(snapshot: QuotaSnapshot): number {
   `);
   const result = db.transaction(() => {
     const info = insert.run(
-      now, snapshot.email || null, snapshot.rawJson,
+      now, snapshot.email || null, snapshot.name || null, snapshot.planName || null, snapshot.rawJson,
       snapshot.promptCreditsUsed ?? null, snapshot.promptCreditsLimit ?? null,
-      snapshot.promptCreditsRemaining ?? null
+      snapshot.promptCreditsRemaining ?? null,
+      snapshot.flowCreditsUsed ?? null, snapshot.flowCreditsLimit ?? null,
+      snapshot.flowCreditsRemaining ?? null,
+      snapshot.googleOneAiCredits ?? null
     );
     const recordId = Number(info.lastInsertRowid);
     for (const m of snapshot.models) {
@@ -119,9 +129,15 @@ export interface RecordRow {
   id: number;
   recorded_at: string;
   email: string | null;
+  name: string | null;
+  plan_name: string | null;
   prompt_credits_used: number | null;
   prompt_credits_limit: number | null;
   prompt_credits_remaining: number | null;
+  flow_credits_used: number | null;
+  flow_credits_limit: number | null;
+  flow_credits_remaining: number | null;
+  google_one_ai_credits: number | null;
 }
 
 export interface ModelQuotaRow {

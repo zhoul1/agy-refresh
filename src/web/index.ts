@@ -211,11 +211,19 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
     return {
       time: record.recorded_at,
       email: record.email,
+      name: record.name,
+      planName: record.plan_name,
       credits: {
         used: record.prompt_credits_used,
         remaining: record.prompt_credits_remaining,
         limit: record.prompt_credits_limit,
       },
+      flowCredits: {
+        used: record.flow_credits_used,
+        remaining: record.flow_credits_remaining,
+        limit: record.flow_credits_limit,
+      },
+      googleOneAiCredits: record.google_one_ai_credits,
       models: models.map((m) => ({
         id: m.model_id,
         display: m.display_name,
@@ -233,11 +241,19 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
     return history.map((h) => ({
       time: h.record.recorded_at,
       email: h.record.email,
+      name: h.record.name,
+      planName: h.record.plan_name,
       credits: {
         used: h.record.prompt_credits_used,
         remaining: h.record.prompt_credits_remaining,
         limit: h.record.prompt_credits_limit,
       },
+      flowCredits: {
+        used: h.record.flow_credits_used,
+        remaining: h.record.flow_credits_remaining,
+        limit: h.record.flow_credits_limit,
+      },
+      googleOneAiCredits: h.record.google_one_ai_credits,
       models: h.models.map((m) => ({
         id: m.model_id,
         display: m.display_name,

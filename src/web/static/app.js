@@ -32,7 +32,10 @@ const LOCALE_DATA = {
     "page.logs.sub": "daemon / monitor / web 实时日志流",
     "metric.nextTalk": "下次对话",
     "metric.nextQuota": "下次额度采集",
-    "metric.credits": "Prompt Credits",
+    "metric.promptCredits": "Prompt Credits",
+    "metric.flowCredits": "Flow Credits",
+    "metric.googleOneAi": "Google One AI",
+    "metric.accountName": "账号名称",
     "metric.used": "已用 {{n}}",
     "metric.usedShort": "已用",
     "metric.noData": "尚无数据",
@@ -215,7 +218,10 @@ const LOCALE_DATA = {
     "page.logs.sub": "Real-time daemon / monitor / web logs",
     "metric.nextTalk": "Next Talk",
     "metric.nextQuota": "Next Quota",
-    "metric.credits": "Prompt Credits",
+    "metric.promptCredits": "Prompt Credits",
+    "metric.flowCredits": "Flow Credits",
+    "metric.googleOneAi": "Google One AI",
+    "metric.accountName": "Account Name",
     "metric.used": "Used {{n}}",
     "metric.usedShort": "Used",
     "metric.noData": "No data",
@@ -617,16 +623,36 @@ function renderOverview() {
       <div class="metric-extra" data-cd="monitor-next-abs">—</div>
     </div>
     <div class="metric ${q?.credits?.limit && (q.credits.used / q.credits.limit) > 0.8 ? 'warn' : 'success'}">
-      <div class="metric-label">${t("metric.credits")}</div>
+      <div class="metric-label">${t("metric.promptCredits")}</div>
       <div class="metric-value">${q?.credits ? `${q.credits.remaining ?? "?"} <span style="font-size:16px;color:var(--text-3)">/ ${q.credits.limit ?? "?"}</span>` : "—"}</div>
-      <div class="metric-extra">${q?.credits?.used != null ? t("metric.used", { n: q.credits.used }) : t("metric.noData")} · ${t("metric.account", { n: q?.email || "—" })}</div>
+      <div class="metric-extra">${q?.credits?.used != null ? t("metric.used", { n: q.credits.used }) : t("metric.noData")} · ${escapeHtml(q?.planName || q?.email || "—")}</div>
     </div>
-    <div class="metric">
-      <div class="metric-label">${t("metric.lastTalk")}</div>
-      <div class="metric-value" style="font-size:18px">${s?.daemon?.lastExecution ? fmtAgo(s.daemon.lastExecution.runAt) : "—"}</div>
-      <div class="metric-extra">${s?.daemon?.lastExecution ? (s.daemon.lastExecution.success ? '<span class="badge badge-success">' + t("badge.success") + '</span>' : '<span class="badge badge-danger">' + t("badge.fail") + '</span>') + (s.daemon.lastExecution.triggeredBy === "manual" ? " " + t("badge.manual") : " " + t("badge.auto")) : t("metric.notYet")}</div>
+    <div class="metric ${q?.flowCredits?.limit && q.flowCredits.limit > 0 && (q.flowCredits.used / q.flowCredits.limit) > 0.8 ? 'warn' : 'success'}">
+      <div class="metric-label">${t("metric.flowCredits")}</div>
+      <div class="metric-value">${q?.flowCredits?.limit ? `${q.flowCredits.remaining ?? "?"} <span style="font-size:16px;color:var(--text-3)">/ ${q.flowCredits.limit ?? "?"}</span>` : "—"}</div>
+      <div class="metric-extra">${q?.flowCredits?.used != null ? t("metric.used", { n: q.flowCredits.used }) : t("metric.noData")}</div>
     </div>
   </div>`);
+
+  if (q?.googleOneAiCredits != null || q?.name) {
+    html.push(`<div class="grid-4" style="margin-bottom:16px">
+      <div class="metric">
+        <div class="metric-label">${t("metric.lastTalk")}</div>
+        <div class="metric-value" style="font-size:18px">${s?.daemon?.lastExecution ? fmtAgo(s.daemon.lastExecution.runAt) : "—"}</div>
+        <div class="metric-extra">${s?.daemon?.lastExecution ? (s.daemon.lastExecution.success ? '<span class="badge badge-success">' + t("badge.success") + '</span>' : '<span class="badge badge-danger">' + t("badge.fail") + '</span>') + (s.daemon.lastExecution.triggeredBy === "manual" ? " " + t("badge.manual") : " " + t("badge.auto")) : t("metric.notYet")}</div>
+      </div>
+      ${q?.googleOneAiCredits != null ? `<div class="metric"><div class="metric-label">${t("metric.googleOneAi")}</div><div class="metric-value">${q.googleOneAiCredits}</div></div>` : ""}
+      ${q?.name ? `<div class="metric"><div class="metric-label">${t("metric.accountName")}</div><div class="metric-value" style="font-size:18px">${escapeHtml(q.name)}</div></div>` : ""}
+    </div>`);
+  } else {
+    html.push(`<div class="grid-4">
+      <div class="metric">
+        <div class="metric-label">${t("metric.lastTalk")}</div>
+        <div class="metric-value" style="font-size:18px">${s?.daemon?.lastExecution ? fmtAgo(s.daemon.lastExecution.runAt) : "—"}</div>
+        <div class="metric-extra">${s?.daemon?.lastExecution ? (s.daemon.lastExecution.success ? '<span class="badge badge-success">' + t("badge.success") + '</span>' : '<span class="badge badge-danger">' + t("badge.fail") + '</span>') + (s.daemon.lastExecution.triggeredBy === "manual" ? " " + t("badge.manual") : " " + t("badge.auto")) : t("metric.notYet")}</div>
+      </div>
+    </div>`);
+  }
 
   html.push(`<div class="action-bar" style="margin-bottom: 16px">
     <button class="btn btn-primary" id="quickCollect">${t("btn.collectNow")}</button>
