@@ -1,6 +1,7 @@
 import { Elysia } from "elysia";
 import { join, dirname } from "path";
 import { existsSync } from "fs";
+import { networkInterfaces } from "os";
 import { fileURLToPath } from "url";
 import {
   getLatestWithModels,
@@ -134,6 +135,30 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
     const fresh = loadConfig(configPath);
     appendLog("web", "info", "配置已重新加载");
     return fresh;
+  });
+
+  app.get("/api/host", () => {
+    const config = loadConfig(configPath);
+    const port = config.web.port;
+    const ifaces = networkInterfaces();
+    const ips: string[] = [];
+    for (const name of Object.keys(ifaces)) {
+      for (const iface of ifaces[name] || []) {
+        if (iface.family === "IPv4" && !iface.internal) {
+          ips.push(iface.address);
+        }
+      }
+    }
+    ips.sort((a, b) => {
+      const aIsPrivate = a.startsWith("192.") || a.startsWith("10.") || a.startsWith("172.");
+      const bIsPrivate = b.startsWith("192.") || b.startsWith("10.") || b.startsWith("172.");
+      if (a.startsWith("192.") && !b.startsWith("192.")) return -1;
+      if (!a.startsWith("192.") && b.startsWith("192.")) return 1;
+      if (aIsPrivate && !bIsPrivate) return -1;
+      if (!aIsPrivate && bIsPrivate) return 1;
+      return 0;
+    });
+    return { ips, port };
   });
 
   app.get("/api/scheduler/status", () => getStatus().daemon);

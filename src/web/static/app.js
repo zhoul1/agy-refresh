@@ -117,6 +117,16 @@ const LOCALE_DATA = {
     "settings.tray": "系统托盘",
     "settings.traySub": "在 Windows 通知区域显示图标，方便快速操作。",
     "settings.trayEnabled": "启用系统托盘图标",
+    "settings.share": "分享连接",
+    "settings.shareSub": "局域网内的其他设备可通过此地址访问控制中心",
+    "settings.shareUrl": "局域网地址",
+    "settings.shareCopy": "复制",
+    "settings.shareHint": "确保其他设备与本机在同一局域网",
+    "settings.shareCopied": "已复制到剪贴板",
+    "settings.shareCopiedToast": "链接已复制",
+    "settings.shareFailed": "复制失败",
+    "settings.shareLoading": "检测中...",
+    "settings.shareUnavailable": "无法检测局域网地址",
     "settings.save": "💾 保存并热生效",
     "settings.reload": "↻ 重新读取",
     "settings.reset": "恢复默认",
@@ -302,6 +312,16 @@ const LOCALE_DATA = {
     "settings.tray": "System Tray",
     "settings.traySub": "Show an icon in the Windows notification area for quick actions.",
     "settings.trayEnabled": "Enable system tray icon",
+    "settings.share": "Share Link",
+    "settings.shareSub": "Other devices on the LAN can access the dashboard via this URL",
+    "settings.shareUrl": "LAN URL",
+    "settings.shareCopy": "Copy",
+    "settings.shareHint": "Make sure other devices are on the same network",
+    "settings.shareCopied": "Copied to clipboard",
+    "settings.shareCopiedToast": "Link copied",
+    "settings.shareFailed": "Copy failed",
+    "settings.shareLoading": "Detecting...",
+    "settings.shareUnavailable": "Unable to detect LAN address",
     "settings.save": "💾 Save & Hot Reload",
     "settings.reload": "↻ Reload",
     "settings.reset": "Reset Defaults",
@@ -981,6 +1001,20 @@ function renderSettings() {
     </div>
   </div>
   <div class="card">
+    <div class="card-title">${t("settings.share")}</div>
+    <div class="fieldset-sub">${t("settings.shareSub")}</div>
+    <div class="form-row">
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">${t("settings.shareUrl")}</label>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" type="text" id="cfg-shareUrl" readonly style="flex:1" value="${t("settings.shareLoading")}">
+          <button class="btn btn-primary" id="btnCopyUrl">${t("settings.shareCopy")}</button>
+        </div>
+        <div class="form-hint" id="shareHint">${t("settings.shareHint")}</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
     <div class="card-title">${t("settings.tray")}</div>
     <div class="fieldset-sub">${t("settings.traySub")}</div>
     <div class="form-row">
@@ -1110,6 +1144,32 @@ function renderSettings() {
     $("#cfg-ac-refresh").value = "50";
     toast(t("toast.resetDone"), "info");
   };
+
+  // share link
+  const urlInput = $("#cfg-shareUrl");
+  const copyBtn = $("#btnCopyUrl");
+  const shareHint = $("#shareHint");
+  if (urlInput && copyBtn) {
+    fetch("/api/host").then(r => r.json()).then(data => {
+      if (data.ips && data.ips.length > 0) {
+        const url = `http://${data.ips[0]}:${data.port}`;
+        urlInput.value = url;
+      } else {
+        urlInput.value = t("settings.shareUnavailable");
+      }
+    }).catch(() => {
+      urlInput.value = t("settings.shareUnavailable");
+    });
+    copyBtn.onclick = async () => {
+      try {
+        await navigator.clipboard.writeText(urlInput.value);
+        if (shareHint) shareHint.textContent = t("settings.shareCopied");
+        toast(t("settings.shareCopiedToast"), "success");
+      } catch {
+        toast(t("settings.shareFailed"), "error");
+      }
+    };
+  }
 }
 
 function renderLogs() {
