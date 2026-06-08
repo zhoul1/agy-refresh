@@ -58,8 +58,6 @@ const LOCALE_DATA = {
     "table.model": "模型",
     "table.displayName": "显示名",
     "table.tag": "标签",
-    "table.capability": "能力",
-    "table.supportsImages": "支持图片",
     "table.resetTime": "重置时间",
     "table.resetCountdown": "倒计时",
     "table.status": "状态",
@@ -245,8 +243,6 @@ const LOCALE_DATA = {
     "table.model": "Model",
     "table.displayName": "Display Name",
     "table.tag": "Tag",
-    "table.capability": "Capability",
-    "table.supportsImages": "Supports images",
     "table.resetTime": "Reset Time",
     "table.resetCountdown": "Countdown",
     "table.status": "Status",
@@ -671,19 +667,17 @@ function renderOverview() {
       <div class="card-title">${t("quota.latestTitle")} <span class="card-title-sub">${q.time ? fmtTime(q.time, true) : ""} · ${escapeHtml(q.planName || q.email || "—")}</span></div>
       <table class="model-table">
         <thead><tr>
-          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.tag")}</th><th>${t("table.capability")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
+          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.tag")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
         </tr></thead>
         <tbody>
         ${q.models.map((m) => {
           const countdown = m.resetTime ? fmtCountdown(m.resetTime) : "—";
           const resetTime = m.resetTime ? fmtTime(m.resetTime, true) : "—";
           const tag = m.tagTitle ? `<span class="badge badge-info">${escapeHtml(m.tagTitle)}</span>` : "—";
-          const imgSupport = m.supportsImages ? '<span class="badge badge-success" title="' + t("table.supportsImages") + '">📷</span>' : "—";
           return `<tr>
             <td><span class="model-id">${escapeHtml(m.id.replace("MODEL_PLACEHOLDER_", ""))}</span></td>
             <td class="model-name">${escapeHtml(m.display || "—")}</td>
             <td>${tag}</td>
-            <td>${imgSupport}</td>
             <td class="countdown" data-cd-model="${escapeAttr(m.resetTime)}">${countdown}</td>
             <td>${resetTime}</td>
             <td>${m.exhausted ? '<span class="badge badge-danger">' + t("badge.exhausted") + '</span>' : '<span class="badge badge-success">' + t("badge.normal") + '</span>'}</td>
