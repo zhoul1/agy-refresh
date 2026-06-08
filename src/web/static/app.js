@@ -887,8 +887,8 @@ async function renderTrends() {
   }
 }
 
-function drawCreditChart(canvasId: string, label: string, values: (number | null)[]) {
-  const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+function drawCreditChart(canvasId, label, values) {
+  const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   const labels = Store.quotaHistory.map((d) => fmtTime(d.time));
   if (Store.chartInstances[canvasId]) Store.chartInstances[canvasId].destroy();
