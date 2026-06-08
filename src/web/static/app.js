@@ -57,10 +57,8 @@ const LOCALE_DATA = {
     "quota.noData": "尚未采集到额度数据。请先启动 antigravity IDE / AG 2.0，然后点击「立即采集额度」。",
     "table.model": "模型",
     "table.displayName": "显示名",
-    "table.usage": "使用率",
-    "table.used": "已用",
-    "table.remaining": "剩余",
     "table.resetTime": "重置时间",
+    "table.resetCountdown": "倒计时",
     "table.status": "状态",
     "exec.recent": "最近对话执行",
     "exec.noRecords": "尚无执行记录",
@@ -243,10 +241,8 @@ const LOCALE_DATA = {
     "quota.noData": "No quota data yet. Please open AGy (antigravity IDE / AG 2.0) first, then click \"Collect Quota Now\".",
     "table.model": "Model",
     "table.displayName": "Display Name",
-    "table.usage": "Usage",
-    "table.used": "Used",
-    "table.remaining": "Remaining",
     "table.resetTime": "Reset Time",
+    "table.resetCountdown": "Countdown",
     "table.status": "Status",
     "exec.recent": "Recent Executions",
     "exec.noRecords": "No records",
@@ -662,21 +658,20 @@ function renderOverview() {
 
   if (q && q.models && q.models.length > 0) {
     html.push(`<div class="card">
-      <div class="card-title">${t("quota.latestTitle")} <span class="card-title-sub">${q.time ? fmtTime(q.time, true) : ""} · ${t("metric.account", { n: q.email || "—" })}</span></div>
+      <div class="card-title">${t("quota.latestTitle")} <span class="card-title-sub">${q.time ? fmtTime(q.time, true) : ""} · ${escapeHtml(q.planName || q.email || "—")}</span></div>
       <table class="model-table">
         <thead><tr>
-          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th style="width: 40%">${t("table.usage")}</th><th class="num">${t("table.used")}</th><th class="num">${t("table.remaining")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
+          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.resetTime")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.status")}</th>
         </tr></thead>
         <tbody>
         ${q.models.map((m) => {
-          const pct = m.usedPct ?? 0;
+          const resetTime = m.resetTime ? fmtTime(m.resetTime, true) : "—";
+          const countdown = m.resetTime ? fmtCountdown(m.resetTime) : "—";
           return `<tr>
             <td><span class="model-id">${escapeHtml(m.id)}</span></td>
             <td class="model-name">${escapeHtml(m.display || "—")}</td>
-            <td><div class="progress-cell"><div class="bar-wrap"><div class="bar-remaining" style="width:${m.remainingPct != null ? m.remainingPct.toFixed(1) : 0}%"></div><div class="bar-fill ${progressClass(pct)}" style="width:${pct.toFixed(1)}%"></div></div><span class="progress-num">${pct.toFixed(1)}%</span></div></td>
-            <td class="num">${pct.toFixed(1)}%</td>
-            <td class="num">${m.remainingPct != null ? m.remainingPct.toFixed(1) + "%" : "—"}</td>
-            <td>${m.resetTime ? fmtTime(m.resetTime) : "—"}</td>
+            <td>${resetTime}</td>
+            <td class="countdown">${countdown}</td>
             <td>${m.exhausted ? '<span class="badge badge-danger">' + t("badge.exhausted") + '</span>' : '<span class="badge badge-success">' + t("badge.normal") + '</span>'}</td>
           </tr>`;
         }).join("")}
