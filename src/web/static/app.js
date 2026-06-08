@@ -702,6 +702,7 @@ function renderOverview() {
       const r = await api.send("/api/monitor/collect-now", "POST");
       toast(t("toast.collected", { n: r.models }), "success");
       await refreshLatestQuota();
+      await refreshQuotaHistory(Store.trendsHours);
       await refreshStatus();
       renderOverview();
     } catch (e) { toast(t("toast.collectFail", { msg: e.message }), "error"); }
@@ -810,9 +811,7 @@ function renderScheduler() {
 }
 
 async function renderTrends() {
-  if (Store.quotaHistory.length === 0) {
-    await refreshQuotaHistory(Store.trendsHours);
-  }
+  await refreshQuotaHistory(Store.trendsHours);
   const html = [];
   html.push(`<div class="tabs-row">
     <div class="tab ${Store.trendsHours === 24 ? "active" : ""}" data-hours="24">${t("trends.24h")}</div>
@@ -1210,6 +1209,7 @@ function connectSSE() {
     refreshStatus();
     if (d.type === "collected") {
       refreshLatestQuota();
+      refreshQuotaHistory(Store.trendsHours);
     } else if (d.type === "tick" || d.type === "start" || d.type === "stop" || d.type === "failed") {
       if (location.hash === "#overview") setRoute("overview");
     }
