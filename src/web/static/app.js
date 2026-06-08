@@ -1043,9 +1043,7 @@ function renderSettings() {
           intervalMinutes: parseInt($("#cfg-monInterval").value, 10),
           agyTimeoutMs: parseInt($("#cfg-agyTimeout").value, 10),
         },
-<<<<<<< HEAD
         web: { trayEnabled },
-=======
         autoContinue: {
           enabled: $("#cfg-ac-enabled").checked,
           conversationId: $("#cfg-ac-conversationId").value.trim(),
@@ -1053,7 +1051,6 @@ function renderSettings() {
           exhaustedThreshold: parseInt($("#cfg-ac-exhausted").value, 10) || 20,
           refreshThreshold: parseInt($("#cfg-ac-refresh").value, 10) || 50,
         },
->>>>>>> 63a0d5a (fix: add PowerShell -WindowStyle Hidden + cmd /q for reliable window suppression on Windows)
       };
       Store.config = await api.send("/api/config", "PUT", payload);
       toast(t("toast.saved"), "success");
@@ -1075,16 +1072,13 @@ function renderSettings() {
     $("#cfg-args").value = "--prompt 你好";
     $("#cfg-monInterval").value = "10";
     $("#cfg-agyTimeout").value = "10000";
-<<<<<<< HEAD
     const tb = $("#cfg-trayEnabled");
     if (tb) tb.checked = false;
-=======
     $("#cfg-ac-enabled").checked = false;
     $("#cfg-ac-conversationId").value = "";
     $("#cfg-ac-prompt").value = "继续";
     $("#cfg-ac-exhausted").value = "20";
     $("#cfg-ac-refresh").value = "50";
->>>>>>> 63a0d5a (fix: add PowerShell -WindowStyle Hidden + cmd /q for reliable window suppression on Windows)
     toast(t("toast.resetDone"), "info");
   };
 }
@@ -1158,6 +1152,11 @@ function applyI18n() {
   const langBtn = $("#langToggle");
   if (langBtn) langBtn.textContent = _lang === "zh" ? t("lang.en") : t("lang.zh");
   if (Store.status) renderTopbar();
+  const toggle = $("#sidebarToggle");
+  if (toggle) {
+    const collapsed = $("#app").classList.contains("sidebar-collapsed");
+    toggle.title = collapsed ? (_lang === "zh" ? "展开侧边栏" : "Expand sidebar") : (_lang === "zh" ? "收起侧边栏" : "Collapse sidebar");
+  }
   const cur = location.hash.replace("#", "") || "overview";
   const titleEl = $("#pageTitle");
   const subEl = $("#pageSub");
@@ -1254,6 +1253,25 @@ async function boot() {
   };
   const initial = location.hash.replace("#", "") || "overview";
   setRoute(initial);
+
+  // sidebar toggle
+  const sidebarToggle = $("#sidebarToggle");
+  const appEl = $("#app");
+  const storedSidebar = localStorage.getItem("agy-sidebar");
+  if (storedSidebar === "collapsed") appEl.classList.add("sidebar-collapsed");
+  if (sidebarToggle) {
+    sidebarToggle.title = _lang === "zh" ? "收起侧边栏" : "Collapse sidebar";
+    sidebarToggle.onclick = () => {
+      appEl.classList.toggle("sidebar-collapsed");
+      const collapsed = appEl.classList.contains("sidebar-collapsed");
+      sidebarToggle.innerHTML = collapsed ? "▶" : "◀";
+      sidebarToggle.title = collapsed
+        ? (_lang === "zh" ? "展开侧边栏" : "Expand sidebar")
+        : (_lang === "zh" ? "收起侧边栏" : "Collapse sidebar");
+      localStorage.setItem("agy-sidebar", collapsed ? "collapsed" : "");
+    };
+  }
+
   connectSSE();
   setInterval(async () => {
     try { await refreshStatus(); renderTopbar(); } catch {}

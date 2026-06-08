@@ -70,6 +70,21 @@ export function initSchema(db: Database) {
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_daemon_executions_time ON daemon_executions(run_at)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS auto_continue_logs (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_at            TEXT NOT NULL,
+      success           INTEGER NOT NULL,
+      stdout            TEXT,
+      stderr            TEXT,
+      duration_ms       INTEGER,
+      conversation_id   TEXT,
+      prompt            TEXT,
+      quota_used_before REAL,
+      quota_used_after  REAL
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_auto_continue_logs_time ON auto_continue_logs(run_at)`);
 }
 
 export function saveSnapshot(snapshot: QuotaSnapshot): number {

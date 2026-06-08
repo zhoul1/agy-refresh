@@ -36,6 +36,10 @@ body {
   display: grid;
   grid-template-columns: 220px 1fr;
   height: 100vh;
+  transition: grid-template-columns 0.2s;
+}
+#app.sidebar-collapsed {
+  grid-template-columns: 56px 1fr;
 }
 
 .sidebar {
@@ -43,8 +47,12 @@ body {
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 20px 0;
+  padding: 20px 0 0;
+  position: relative;
+  overflow: hidden;
+  transition: width 0.2s;
 }
+#app.sidebar-collapsed .sidebar { width: 56px; }
 .brand {
   display: flex;
   align-items: center;
@@ -79,12 +87,38 @@ body {
 .nav-item.active { background: var(--primary-soft); color: var(--primary); font-weight: 500; }
 .nav-icon { font-size: 16px; width: 20px; text-align: center; }
 
+.sidebar-toggle {
+  flex-shrink: 0;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-3);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.15s;
+}
+.sidebar-toggle:hover { color: var(--text); background: var(--surface-2); }
+#app.sidebar-collapsed .sidebar-toggle { font-size: 14px; }
+
 .sidebar-footer {
   padding: 16px 20px;
   border-top: 1px solid var(--border);
   font-size: 12px;
   color: var(--text-3);
 }
+#app.sidebar-collapsed .brand-text,
+#app.sidebar-collapsed .nav-item span:last-child,
+#app.sidebar-collapsed .sidebar-footer .conn-status span:last-child,
+#app.sidebar-collapsed .sidebar-footer .uptime { display: none; }
+#app.sidebar-collapsed .brand { padding: 0 10px 16px; justify-content: center; }
+#app.sidebar-collapsed .brand-icon { width: 32px; height: 32px; font-size: 16px; }
+#app.sidebar-collapsed .nav { padding: 12px 8px; }
+#app.sidebar-collapsed .nav-item { justify-content: center; padding: 9px 0; }
+#app.sidebar-collapsed .nav-icon { margin: 0; }
+#app.sidebar-collapsed .sidebar-footer { padding: 12px 0; display: flex; flex-direction: column; align-items: center; }
 .conn-status { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
 .dot {
   width: 8px; height: 8px; border-radius: 50%;
