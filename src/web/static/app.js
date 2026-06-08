@@ -912,7 +912,7 @@ function drawCreditChart(canvasId, label, values) {
       maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
-        y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" }, ticks: { callback: (v: any) => v + "%" } },
+        y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" }, ticks: { callback: v => v + "%" } },
         x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: "#9ca3af" } },
       },
     },
