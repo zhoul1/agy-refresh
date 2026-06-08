@@ -57,6 +57,9 @@ const LOCALE_DATA = {
     "quota.noData": "尚未采集到额度数据。请先启动 antigravity IDE / AG 2.0，然后点击「立即采集额度」。",
     "table.model": "模型",
     "table.displayName": "显示名",
+    "table.tag": "标签",
+    "table.capability": "能力",
+    "table.supportsImages": "支持图片",
     "table.resetTime": "重置时间",
     "table.resetCountdown": "倒计时",
     "table.status": "状态",
@@ -241,6 +244,9 @@ const LOCALE_DATA = {
     "quota.noData": "No quota data yet. Please open AGy (antigravity IDE / AG 2.0) first, then click \"Collect Quota Now\".",
     "table.model": "Model",
     "table.displayName": "Display Name",
+    "table.tag": "Tag",
+    "table.capability": "Capability",
+    "table.supportsImages": "Supports images",
     "table.resetTime": "Reset Time",
     "table.resetCountdown": "Countdown",
     "table.status": "Status",
@@ -600,6 +606,10 @@ function updateCountdowns() {
   $$("[data-cd='monitor-next-abs']").forEach((el) => {
     el.textContent = s.monitor.nextCollectAt ? fmtTime(s.monitor.nextCollectAt) : "—";
   });
+  $$("[data-cd-model]").forEach((el) => {
+    const rt = el.getAttribute("data-cd-model");
+    el.textContent = rt ? fmtCountdown(rt) : "—";
+  });
 }
 
 function renderOverview() {
@@ -661,17 +671,21 @@ function renderOverview() {
       <div class="card-title">${t("quota.latestTitle")} <span class="card-title-sub">${q.time ? fmtTime(q.time, true) : ""} · ${escapeHtml(q.planName || q.email || "—")}</span></div>
       <table class="model-table">
         <thead><tr>
-          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.resetTime")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.status")}</th>
+          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.tag")}</th><th>${t("table.capability")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
         </tr></thead>
         <tbody>
         ${q.models.map((m) => {
-          const resetTime = m.resetTime ? fmtTime(m.resetTime, true) : "—";
           const countdown = m.resetTime ? fmtCountdown(m.resetTime) : "—";
+          const resetTime = m.resetTime ? fmtTime(m.resetTime, true) : "—";
+          const tag = m.tagTitle ? `<span class="badge badge-info">${escapeHtml(m.tagTitle)}</span>` : "—";
+          const imgSupport = m.supportsImages ? '<span class="badge badge-success" title="' + t("table.supportsImages") + '">📷</span>' : "—";
           return `<tr>
-            <td><span class="model-id">${escapeHtml(m.id)}</span></td>
+            <td><span class="model-id">${escapeHtml(m.id.replace("MODEL_PLACEHOLDER_", ""))}</span></td>
             <td class="model-name">${escapeHtml(m.display || "—")}</td>
+            <td>${tag}</td>
+            <td>${imgSupport}</td>
+            <td class="countdown" data-cd-model="${escapeAttr(m.resetTime)}">${countdown}</td>
             <td>${resetTime}</td>
-            <td class="countdown">${countdown}</td>
             <td>${m.exhausted ? '<span class="badge badge-danger">' + t("badge.exhausted") + '</span>' : '<span class="badge badge-success">' + t("badge.normal") + '</span>'}</td>
           </tr>`;
         }).join("")}
@@ -843,11 +857,14 @@ async function renderTrends() {
   if (Store.quotaHistory.length === 0) {
     html.push(`<div class="card"><div class="empty">${t("trends.noData")}</div></div>`);
   } else {
-    for (const m of Store.models) {
-      const label = m.display || m.id;
+    html.push(`<div class="card">
+      <div class="card-title">Prompt Credits ${t("trends.usagePct")}</div>
+      <div class="chart-container"><canvas id="chartPromptCredits"></canvas></div>
+    </div>`);
+    if (Store.quotaHistory.some(d => d.flowCredits?.limit)) {
       html.push(`<div class="card">
-        <div class="card-title">${escapeHtml(label)} <span class="card-title-sub">${t("trends.usagePct")}</span></div>
-        <div class="chart-container"><canvas data-model="${escapeAttr(m.id)}"></canvas></div>
+        <div class="card-title">Flow Credits ${t("trends.usagePct")}</div>
+        <div class="chart-container"><canvas id="chartFlowCredits"></canvas></div>
       </div>`);
     }
   }
@@ -862,45 +879,43 @@ async function renderTrends() {
     };
   });
 
-  drawCharts();
+  if (Store.quotaHistory.length > 0) {
+    drawCreditChart("chartPromptCredits", t("metric.promptCredits"), Store.quotaHistory.map(d => d.credits?.limit ? (d.credits.used / d.credits.limit) * 100 : null));
+    if (Store.quotaHistory.some(d => d.flowCredits?.limit)) {
+      drawCreditChart("chartFlowCredits", t("metric.flowCredits"), Store.quotaHistory.map(d => d.flowCredits?.limit ? (d.flowCredits.used / d.flowCredits.limit) * 100 : null));
+    }
+  }
 }
 
-function drawCharts() {
-  const palette = ["#2563eb", "#7c3aed", "#0891b2", "#16a34a", "#d97706", "#dc2626", "#db2777", "#65a30d"];
-  $$("canvas[data-model]").forEach((canvas, idx) => {
-    const mid = canvas.getAttribute("data-model");
-    const labels = Store.quotaHistory.map((d) => fmtTime(d.time));
-    const values = Store.quotaHistory.map((d) => {
-      const m = d.models.find((x) => x.id === mid);
-      return m?.usedPct ?? null;
-    });
-    const color = palette[idx % palette.length];
-    if (Store.chartInstances[mid]) Store.chartInstances[mid].destroy();
-    Store.chartInstances[mid] = new Chart(canvas, {
-      type: "line",
-      data: {
-        labels,
-        datasets: [{
-          label: t("chart.usageLabel"),
-          data: values,
-          borderColor: color,
-          backgroundColor: color + "22",
-          fill: true,
-          tension: 0.3,
-          spanGaps: true,
-          pointRadius: values.length > 50 ? 0 : 3,
-        }],
+function drawCreditChart(canvasId: string, label: string, values: (number | null)[]) {
+  const canvas = document.getElementById(canvasId) as HTMLCanvasElement | null;
+  if (!canvas) return;
+  const labels = Store.quotaHistory.map((d) => fmtTime(d.time));
+  if (Store.chartInstances[canvasId]) Store.chartInstances[canvasId].destroy();
+  Store.chartInstances[canvasId] = new Chart(canvas, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label,
+        data: values,
+        borderColor: "#2563eb",
+        backgroundColor: "#2563eb22",
+        fill: true,
+        tension: 0.3,
+        spanGaps: true,
+        pointRadius: values.length > 50 ? 0 : 3,
+      }],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" }, ticks: { callback: (v: any) => v + "%" } },
+        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: "#9ca3af" } },
       },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
-        scales: {
-          y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" } },
-          x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: "#9ca3af" } },
-        },
-      },
-    });
+    },
   });
 }
 

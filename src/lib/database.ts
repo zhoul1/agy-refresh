@@ -63,6 +63,9 @@ export function initSchema(db: Database) {
       is_exhausted INTEGER DEFAULT 0
     )
   `);
+  try { db.run("ALTER TABLE model_quotas ADD COLUMN tag_title TEXT"); } catch {}
+  try { db.run("ALTER TABLE model_quotas ADD COLUMN tag_description TEXT"); } catch {}
+  try { db.run("ALTER TABLE model_quotas ADD COLUMN supports_images INTEGER DEFAULT 0"); } catch {}
   db.run(`CREATE INDEX IF NOT EXISTS idx_model_quotas_record ON model_quotas(record_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_quota_records_time ON quota_records(recorded_at)`);
   db.run(`
@@ -102,8 +105,8 @@ export function saveSnapshot(snapshot: QuotaSnapshot): number {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const insertModel = db.prepare(`
-    INSERT INTO model_quotas (record_id, model_id, display_name, used_pct, remaining_pct, reset_time, is_exhausted)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO model_quotas (record_id, model_id, display_name, used_pct, remaining_pct, reset_time, is_exhausted, tag_title, tag_description, supports_images)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   const result = db.transaction(() => {
     const info = insert.run(
@@ -118,7 +121,9 @@ export function saveSnapshot(snapshot: QuotaSnapshot): number {
     for (const m of snapshot.models) {
       insertModel.run(recordId, m.modelId, m.displayName || null,
         m.usedPercentage ?? null, m.remainingPercentage ?? null,
-        m.resetTime || null, m.isExhausted ? 1 : 0);
+        m.resetTime || null, m.isExhausted ? 1 : 0,
+        m.tagTitle || null, m.tagDescription || null,
+        m.supportsImages ? 1 : 0);
     }
     return recordId;
   })();
@@ -149,6 +154,9 @@ export interface ModelQuotaRow {
   remaining_pct: number | null;
   reset_time: string | null;
   is_exhausted: number;
+  tag_title: string | null;
+  tag_description: string | null;
+  supports_images: number;
 }
 
 export function getRecords(limit = 1000): RecordRow[] {

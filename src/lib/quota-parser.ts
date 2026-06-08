@@ -5,6 +5,9 @@ export interface ModelQuotaInfo {
   remainingPercentage?: number;
   resetTime?: string;
   isExhausted: boolean;
+  tagTitle?: string;
+  tagDescription?: string;
+  supportsImages?: boolean;
 }
 
 export interface QuotaSnapshot {
@@ -75,6 +78,9 @@ export function parseUserStatusToSnapshot(input: any): QuotaSnapshot {
         remainingPercentage: remainingFraction !== undefined ? remainingFraction * 100 : undefined,
         resetTime: quotaInfo?.resetTime || undefined,
         isExhausted: remainingFraction === 0,
+        tagTitle: m.tagTitle || undefined,
+        tagDescription: m.tagDescription || undefined,
+        supportsImages: m.supportsImages === true ? true : undefined,
       });
     }
   }

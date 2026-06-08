@@ -231,6 +231,9 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
         remainingPct: m.remaining_pct,
         resetTime: m.reset_time,
         exhausted: m.is_exhausted === 1,
+        tagTitle: m.tag_title,
+        tagDescription: m.tag_description,
+        supportsImages: m.supports_images === 1,
       })),
     };
   });
@@ -261,6 +264,9 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
         remainingPct: m.remaining_pct,
         resetTime: m.reset_time,
         exhausted: m.is_exhausted === 1,
+        tagTitle: m.tag_title,
+        tagDescription: m.tag_description,
+        supportsImages: m.supports_images === 1,
       })),
     }));
   });
