@@ -10,9 +10,7 @@ import {
   getRecords,
   getRecentExecutions,
   getLatestExecution,
-  getAutoContinueLogs,
   type DaemonExecutionRow,
-  type AutoContinueLogRow,
 } from "../lib/database";
 import {
   loadConfig,
@@ -31,9 +29,7 @@ import {
   stopMonitor,
   onEvent,
   offEvent,
-  getAutoContinueState,
   type LogEntry,
-  type AutoContinueState,
 } from "../lib/runtime";
 import { runDaemonOnce } from "../lib/daemon";
 import { collectOnce } from "../lib/collector";
@@ -183,8 +179,8 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
       const result = await runDaemonOnce(configPath, "manual");
       return { ok: true, execution: result };
     } catch (e: any) {
-      set.status = 500;
-      return { error: e.message || String(e) };
+      // 即使出错也返回200状态码，让前端能继续处理
+      return { ok: false, error: e.message || String(e) };
     }
   });
 
@@ -219,15 +215,6 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
       set.status = 500;
       return { error: e.message || String(e) };
     }
-  });
-
-  app.get("/api/monitor/auto-continue/status", () => {
-    return getAutoContinueState();
-  });
-
-  app.get("/api/monitor/auto-continue/logs", ({ query }) => {
-    const limit = Math.min(parseInt(String(query.limit ?? "50"), 10) || 50, 500);
-    return getAutoContinueLogs(limit);
   });
 
   app.get("/api/quota/latest", () => {
@@ -334,8 +321,6 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
           ["monitor:collected", (d) => send("monitor", { type: "collected", ...d })],
           ["monitor:failed", (d) => send("monitor", { type: "failed", ...d })],
           ["log", (d: LogEntry) => send("log", d)],
-          ["autocontinue:triggered", (d) => send("autocontinue", { type: "triggered", ...d })],
-          ["autocontinue:state", (d: AutoContinueState) => send("autocontinue", { type: "state", ...d })],
         ];
         for (const [name, h] of handlers) onEvent(name as any, h as any);
 

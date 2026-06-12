@@ -377,6 +377,11 @@ fieldset legend {
 .model-name { font-weight: 500; }
 .progress-cell { display: flex; align-items: center; gap: 8px; }
 .progress-num { font-variant-numeric: tabular-nums; min-width: 50px; text-align: right; font-weight: 500; }
+.bar-cell { display: flex; align-items: center; gap: 6px; min-width: 80px; }
+.bar-cell span { font-variant-numeric: tabular-nums; font-size: 12px; font-weight: 500; min-width: 36px; }
+.bar { height: 8px; border-radius: 4px; min-width: 4px; transition: width 0.3s; }
+.bar-used { background: var(--warn); }
+.bar-remaining { background: var(--success); }
 
 .execution-row { cursor: pointer; }
 .execution-row td:last-child { text-align: right; }

@@ -1,4 +1,4 @@
-import { spawn as nodeSpawn, spawnSync as nodeSpawnSync } from "node:child_process";
+import { spawn as nodeSpawn, spawnSync as nodeSpawnSync, type ChildProcess } from "node:child_process";
 import { Readable } from "node:stream";
 
 const isWin = process.platform === "win32";
@@ -14,23 +14,44 @@ function injectHiddenFlag(args: string[]): string[] {
   return args;
 }
 
-export function quietSpawn(args: string[], opts?: { stdout?: "pipe" | "inherit" | "ignore"; stderr?: "pipe" | "inherit" | "ignore" }) {
+export interface SpawnResult {
+  stdout: ReadableStream | null;
+  stderr: ReadableStream | null;
+  exited: Promise<number>;
+  kill: () => void;
+  spawnError: string;
+}
+
+export function quietSpawn(args: string[], opts?: { stdout?: "pipe" | "inherit" | "ignore"; stderr?: "pipe" | "inherit" | "ignore" }): SpawnResult {
   if (isWin) {
     const fixed = injectHiddenFlag(args);
+    let spawnError = "";
     const child = nodeSpawn(fixed[0], fixed.slice(1), {
       windowsHide: true,
-      stdio: ["pipe", opts?.stdout === "pipe" ? "pipe" : "ignore", opts?.stderr === "pipe" ? "pipe" : "ignore"] as any,
+      stdio: ["ignore", opts?.stdout === "pipe" ? "pipe" : "ignore", opts?.stderr === "pipe" ? "pipe" : "ignore"] as any, // stdin 设为 ignore！
     } as any);
     return {
       stdout: child.stdout ? Readable.toWeb(child.stdout) as ReadableStream : null,
       stderr: child.stderr ? Readable.toWeb(child.stderr) as ReadableStream : null,
       exited: new Promise<number>((resolve) => {
         child.on("exit", (code) => resolve(code ?? -1));
-        child.on("error", () => resolve(-1));
+        child.on("error", (err: any) => { spawnError = err?.message || String(err); resolve(-1); });
       }),
+      kill: () => { try { child.kill(); } catch {} },
+      get spawnError() { return spawnError; },
     };
   }
-  return Bun.spawn(args, opts as any);
+  const bunProc = Bun.spawn(args, {
+    ...opts,
+    stdin: "ignore", // 确保 Bun.spawn 的 stdin 也是 ignore
+  } as any);
+  return {
+    stdout: (bunProc as any).stdout as ReadableStream ?? null,
+    stderr: (bunProc as any).stderr as ReadableStream ?? null,
+    exited: bunProc.exited as Promise<number>,
+    kill: () => { try { (bunProc as any).kill(); } catch {} },
+    spawnError: "",
+  };
 }
 
 export function quietSpawnSync(args: string[]) {

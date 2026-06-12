@@ -37,5 +37,8 @@ cli.exe
 data/
 tests/.tmp/
 
+# Runtime output
+output.txt
+
 # PM2 logs
 logs/

@@ -2,18 +2,20 @@
   "scheduler": {
     "startTime": "08:00",
     "endTime": "23:30",
-    "intervalMinutes": 30
+    "intervalMinutes": 60
   },
   "command": {
     "executable": "agy",
     "args": [
+      "--log-file",
+      "nul",
       "--prompt",
-      "你是谁"
+      "hi"
     ]
   },
   "monitor": {
     "intervalMinutes": 10,
-    "agyTimeoutMs": 50000
+    "agyTimeoutMs": 30000
   },
   "web": {
     "port": 6789,

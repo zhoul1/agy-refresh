@@ -10,6 +10,7 @@ export interface SchedulerConfig {
 export interface CommandConfig {
   executable: string; // 默认 "agy"
   args: string[];     // 默认 ["--prompt", "你好"]
+  maxRetries: number; // 执行失败最大重试次数，默认 3
 }
 
 export interface MonitorConfig {
@@ -20,14 +21,7 @@ export interface MonitorConfig {
 export interface WebConfig {
   port: number;
   host: string;
-}
-
-export interface AutoContinueConfig {
-  enabled: boolean;
-  conversationId: string;
-  prompt: string;
-  exhaustedThreshold: number;
-  refreshThreshold: number;
+  trayEnabled?: boolean;
 }
 
 export interface Config {
@@ -35,18 +29,18 @@ export interface Config {
   command: CommandConfig;
   monitor: MonitorConfig;
   web: WebConfig;
-  autoContinue: AutoContinueConfig;
 }
 
 export const DEFAULT_CONFIG: Config = {
   scheduler: {
     startTime: "08:00",
     endTime: "23:30",
-    intervalMinutes: 30,
+    intervalMinutes: 60,
   },
   command: {
     executable: "agy",
-    args: ["--prompt", "你好"],
+    args: ["--prompt", "hi"],
+    maxRetries: 3,
   },
   monitor: {
     intervalMinutes: 10,
@@ -55,13 +49,7 @@ export const DEFAULT_CONFIG: Config = {
   web: {
     port: 6789,
     host: "0.0.0.0",
-  },
-  autoContinue: {
-    enabled: false,
-    conversationId: "",
-    prompt: "继续",
-    exhaustedThreshold: 20,
-    refreshThreshold: 50,
+    trayEnabled: true,
   },
 };
 
@@ -119,6 +107,9 @@ export function loadConfig(configPath?: string): Config {
       args: Array.isArray(parsed.command?.args)
         ? parsed.command.args.map((arg: any) => String(arg))
         : DEFAULT_CONFIG.command.args,
+      maxRetries: typeof parsed.command?.maxRetries === "number" && parsed.command.maxRetries >= 0
+        ? parsed.command.maxRetries
+        : DEFAULT_CONFIG.command.maxRetries,
     };
 
     const monitor: MonitorConfig = {
@@ -133,14 +124,7 @@ export function loadConfig(configPath?: string): Config {
     const web: WebConfig = {
       port: typeof parsed.web?.port === "number" ? parsed.web.port : DEFAULT_CONFIG.web.port,
       host: typeof parsed.web?.host === "string" ? parsed.web.host : DEFAULT_CONFIG.web.host,
-    };
-
-    const autoContinue: AutoContinueConfig = {
-      enabled: typeof parsed.autoContinue?.enabled === "boolean" ? parsed.autoContinue.enabled : DEFAULT_CONFIG.autoContinue.enabled,
-      conversationId: typeof parsed.autoContinue?.conversationId === "string" ? parsed.autoContinue.conversationId : DEFAULT_CONFIG.autoContinue.conversationId,
-      prompt: typeof parsed.autoContinue?.prompt === "string" && parsed.autoContinue.prompt.trim().length > 0 ? parsed.autoContinue.prompt : DEFAULT_CONFIG.autoContinue.prompt,
-      exhaustedThreshold: typeof parsed.autoContinue?.exhaustedThreshold === "number" && parsed.autoContinue.exhaustedThreshold > 0 ? parsed.autoContinue.exhaustedThreshold : DEFAULT_CONFIG.autoContinue.exhaustedThreshold,
-      refreshThreshold: typeof parsed.autoContinue?.refreshThreshold === "number" && parsed.autoContinue.refreshThreshold > 0 ? parsed.autoContinue.refreshThreshold : DEFAULT_CONFIG.autoContinue.refreshThreshold,
+      trayEnabled: typeof parsed.web?.trayEnabled === "boolean" ? parsed.web.trayEnabled : DEFAULT_CONFIG.web.trayEnabled,
     };
 
     // 检查 startTime 是否早于 endTime
@@ -151,7 +135,7 @@ export function loadConfig(configPath?: string): Config {
       return { ...DEFAULT_CONFIG };
     }
 
-    return { scheduler, command, monitor, web, autoContinue };
+    return { scheduler, command, monitor, web };
   } catch (error) {
     console.error(`[Config] 解析配置文件失败，将使用默认配置。错误信息:`, error);
     return { ...DEFAULT_CONFIG };
@@ -171,7 +155,6 @@ export function validateConfig(cfg: Partial<Config>): Config {
     command: { ...DEFAULT_CONFIG.command, ...(cfg.command || {}) },
     monitor: { ...DEFAULT_CONFIG.monitor, ...(cfg.monitor || {}) },
     web: { ...DEFAULT_CONFIG.web, ...(cfg.web || {}) },
-    autoContinue: { ...DEFAULT_CONFIG.autoContinue, ...(cfg.autoContinue || {}) },
   };
 
   if (!isValidTimeFormat(merged.scheduler.startTime)) {
@@ -193,6 +176,9 @@ export function validateConfig(cfg: Partial<Config>): Config {
   if (!Array.isArray(merged.command.args) || merged.command.args.some(a => typeof a !== "string")) {
     throw new ConfigValidationError(`command.args 必须为字符串数组`);
   }
+  if (typeof merged.command.maxRetries !== "number" || merged.command.maxRetries < 0 || !Number.isInteger(merged.command.maxRetries)) {
+    throw new ConfigValidationError(`command.maxRetries 必须为非负整数: ${merged.command.maxRetries}`);
+  }
 
   if (typeof merged.monitor.intervalMinutes !== "number" || merged.monitor.intervalMinutes <= 0) {
     throw new ConfigValidationError(`monitor.intervalMinutes 必须为正数: ${merged.monitor.intervalMinutes}`);
@@ -206,22 +192,6 @@ export function validateConfig(cfg: Partial<Config>): Config {
   }
   if (typeof merged.web.host !== "string" || merged.web.host.trim().length === 0) {
     throw new ConfigValidationError(`web.host 不能为空`);
-  }
-
-  if (merged.autoContinue.enabled) {
-    const id = merged.autoContinue.conversationId;
-    if (typeof id !== "string" || id.trim().length === 0) {
-      throw new ConfigValidationError(`autoContinue.conversationId 不能为空`);
-    }
-    if (merged.autoContinue.exhaustedThreshold < 0 || merged.autoContinue.exhaustedThreshold > 100) {
-      throw new ConfigValidationError(`autoContinue.exhaustedThreshold 必须在 0-100 之间: ${merged.autoContinue.exhaustedThreshold}`);
-    }
-    if (merged.autoContinue.refreshThreshold < 0 || merged.autoContinue.refreshThreshold > 100) {
-      throw new ConfigValidationError(`autoContinue.refreshThreshold 必须在 0-100 之间: ${merged.autoContinue.refreshThreshold}`);
-    }
-    if (merged.autoContinue.exhaustedThreshold >= merged.autoContinue.refreshThreshold) {
-      throw new ConfigValidationError(`autoContinue.exhaustedThreshold (${merged.autoContinue.exhaustedThreshold}) 必须小于 refreshThreshold (${merged.autoContinue.refreshThreshold})`);
-    }
   }
 
   return merged;

@@ -80,21 +80,6 @@ export function initSchema(db: Database) {
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_daemon_executions_time ON daemon_executions(run_at)`);
-  db.run(`
-    CREATE TABLE IF NOT EXISTS auto_continue_logs (
-      id                INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_at            TEXT NOT NULL,
-      success           INTEGER NOT NULL,
-      stdout            TEXT,
-      stderr            TEXT,
-      duration_ms       INTEGER,
-      conversation_id   TEXT,
-      prompt            TEXT,
-      quota_used_before REAL,
-      quota_used_after  REAL
-    )
-  `);
-  db.run(`CREATE INDEX IF NOT EXISTS idx_auto_continue_logs_time ON auto_continue_logs(run_at)`);
 }
 
 export function saveSnapshot(snapshot: QuotaSnapshot): number {
@@ -245,6 +230,41 @@ export function saveExecution(input: DaemonExecutionInput): number {
   return Number(info.lastInsertRowid);
 }
 
+export function updateExecution(id: number, input: Partial<DaemonExecutionInput>) {
+  const db = getDb();
+  const sets = [];
+  const params = [];
+  
+  if (input.success !== undefined) {
+    sets.push("success = ?");
+    params.push(input.success ? 1 : 0);
+  }
+  if (input.stdout !== undefined) {
+    sets.push("stdout = ?");
+    params.push(input.stdout ?? null);
+  }
+  if (input.stderr !== undefined) {
+    sets.push("stderr = ?");
+    params.push(input.stderr ?? null);
+  }
+  if (input.durationMs !== undefined) {
+    sets.push("duration_ms = ?");
+    params.push(input.durationMs ?? null);
+  }
+  if (input.triggeredBy !== undefined) {
+    sets.push("triggered_by = ?");
+    params.push(input.triggeredBy ?? null);
+  }
+  
+  params.push(id);
+  const stmt = db.prepare(`
+    UPDATE daemon_executions 
+    SET ${sets.join(", ")}
+    WHERE id = ?
+  `);
+  stmt.run(...params);
+}
+
 export function getRecentExecutions(limit = 50): DaemonExecutionRow[] {
   const db = getDb();
   return db.query(`SELECT * FROM daemon_executions ORDER BY run_at DESC LIMIT ?`).all(limit) as DaemonExecutionRow[];
@@ -256,59 +276,4 @@ export function getLatestExecution(): DaemonExecutionRow | null {
   return rows[0] || null;
 }
 
-export interface AutoContinueLogRow {
-  id: number;
-  run_at: string;
-  success: number;
-  stdout: string | null;
-  stderr: string | null;
-  duration_ms: number | null;
-  conversation_id: string | null;
-  prompt: string | null;
-  quota_used_before: number | null;
-  quota_used_after: number | null;
-}
 
-export interface AutoContinueLogSaveInput {
-  success: boolean;
-  stdout?: string;
-  stderr?: string;
-  durationMs?: number;
-  conversationId?: string;
-  prompt?: string;
-  quotaUsedBefore?: number;
-  quotaUsedAfter?: number;
-  runAt?: string;
-}
-
-export function saveAutoContinueLog(input: AutoContinueLogSaveInput): number {
-  const db = getDb();
-  const runAt = input.runAt || new Date().toISOString();
-  const stmt = db.prepare(`
-    INSERT INTO auto_continue_logs (run_at, success, stdout, stderr, duration_ms, conversation_id, prompt, quota_used_before, quota_used_after)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  const info = stmt.run(
-    runAt,
-    input.success ? 1 : 0,
-    input.stdout ?? null,
-    input.stderr ?? null,
-    input.durationMs ?? null,
-    input.conversationId ?? null,
-    input.prompt ?? null,
-    input.quotaUsedBefore ?? null,
-    input.quotaUsedAfter ?? null,
-  );
-  return Number(info.lastInsertRowid);
-}
-
-export function getAutoContinueLogs(limit = 50): AutoContinueLogRow[] {
-  const db = getDb();
-  return db.query(`SELECT * FROM auto_continue_logs ORDER BY run_at DESC LIMIT ?`).all(limit) as AutoContinueLogRow[];
-}
-
-export function getLatestAutoContinueLog(): AutoContinueLogRow | null {
-  const db = getDb();
-  const rows = db.query(`SELECT * FROM auto_continue_logs ORDER BY run_at DESC LIMIT 1`).all() as AutoContinueLogRow[];
-  return rows[0] || null;
-}

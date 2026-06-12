@@ -42,3 +42,34 @@ export function getNextRunTime(now: Date, config: SchedulerConfig): Date {
 
   return nextDate;
 }
+
+/**
+ * 基于上次执行开始时间 + 间隔的滚动调度
+ * 每次执行完成后，下一次为 lastRunStart + intervalMinutes
+ * 自动处理：执行超时（跳到 now + interval）、越出时间窗口（推到次日 startTime）
+ * @param lastRunStart 上次执行开始时间
+ * @param now 当前时间
+ * @param config 调度配置
+ */
+export function getNextRollingRunTime(lastRunStart: Date, now: Date, config: SchedulerConfig): Date {
+  const startMins = parseTimeToMinutes(config.startTime);
+  const endMins = parseTimeToMinutes(config.endTime);
+  const intervalMs = config.intervalMinutes * 60000;
+
+  let nextRun = new Date(lastRunStart.getTime() + intervalMs);
+
+  if (nextRun.getTime() <= now.getTime()) {
+    nextRun = new Date(now.getTime() + intervalMs);
+  }
+
+  const nextMins = nextRun.getHours() * 60 + nextRun.getMinutes();
+
+  if (nextMins > endMins) {
+    nextRun.setDate(nextRun.getDate() + 1);
+    nextRun.setHours(Math.floor(startMins / 60), startMins % 60, 0, 0);
+  } else if (nextMins < startMins) {
+    nextRun.setHours(Math.floor(startMins / 60), startMins % 60, 0, 0);
+  }
+
+  return nextRun;
+}

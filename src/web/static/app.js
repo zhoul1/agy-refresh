@@ -61,6 +61,8 @@ const LOCALE_DATA = {
     "table.resetTime": "重置时间",
     "table.resetCountdown": "倒计时",
     "table.status": "状态",
+    "table.used": "已消耗",
+    "table.remaining": "未消耗",
     "exec.recent": "最近对话执行",
     "exec.noRecords": "尚无执行记录",
     "monitor.status": "监控状态",
@@ -106,6 +108,8 @@ const LOCALE_DATA = {
     "settings.executable": "可执行文件",
     "settings.args": "参数 (用空格分隔)",
     "settings.argsHint": "例: --prompt 你好",
+    "settings.retries": "最大重试次数",
+    "settings.retriesHint": "执行失败后重试次数（默认 3）",
     "settings.monitor": "监控设置",
     "settings.monitorSub": "额度自动采集的间隔与 agy HTTP 超时。",
     "settings.collectInterval": "采集间隔 (分钟)",
@@ -152,33 +156,7 @@ const LOCALE_DATA = {
     "logs.level": "级别:",
     "logs.all": "全部",
     "logs.clear": "清空显示",
-    "autocontinue.cardTitle": "自动续杯",
-    "autocontinue.enabled": "已启用",
-    "autocontinue.disabled": "已关闭",
-    "autocontinue.lastTrigger": "最近触发",
-    "autocontinue.totalSuccess": "已成功续杯 {{n}} 次",
-    "autocontinue.target": "目标对话",
-    "autocontinue.notYet": "尚未触发",
-    "autocontinue.settingsTitle": "自动续杯设置",
-    "autocontinue.settingsSub": "额度耗尽后自动发送「继续」。每次额度采集时检查阈值，条件满足时触发一次。",
-    "autocontinue.enableLabel": "启用自动续杯",
-    "autocontinue.conversationId": "对话 UUID",
-    "autocontinue.conversationIdHint": "从 agy TUI → /resume → 退出时复制 UUID",
-    "autocontinue.prompt": "发送消息",
-    "autocontinue.exhaustedThreshold": "耗尽阈值 %",
-    "autocontinue.exhaustedThresholdHint": "平均剩余低于此值视为「额度已耗尽」",
-    "autocontinue.refreshThreshold": "刷新阈值 %",
-    "autocontinue.refreshThresholdHint": "平均剩余高于此值视为「额度已刷新」",
-    "autocontinue.logTitle": "触发历史",
-    "autocontinue.logTime": "时间",
-    "autocontinue.logResult": "结果",
-    "autocontinue.logDuration": "耗时",
-    "autocontinue.logBefore": "触发前",
-    "autocontinue.logAfter": "触发后",
-    "autocontinue.success": "成功",
-    "autocontinue.fail": "失败",
-    "autocontinue.saved": "AutoContinue 设置已保存",
-    "autocontinue.saveFailed": "保存失败: {{msg}}",
+
     "time.soon": "即将",
     "time.secondsAgo": "{{n}} 秒前",
     "time.minutesAgo": "{{n}} 分钟前",
@@ -256,6 +234,8 @@ const LOCALE_DATA = {
     "table.resetTime": "Reset Time",
     "table.resetCountdown": "Countdown",
     "table.status": "Status",
+    "table.used": "Used",
+    "table.remaining": "Remaining",
     "exec.recent": "Recent Executions",
     "exec.noRecords": "No records",
     "monitor.status": "Monitor Status",
@@ -301,6 +281,8 @@ const LOCALE_DATA = {
     "settings.executable": "Executable",
     "settings.args": "Args (space-separated)",
     "settings.argsHint": "e.g. --prompt hello",
+    "settings.retries": "Max Retries",
+    "settings.retriesHint": "Retry count on failure (default 3)",
     "settings.monitor": "Monitor Settings",
     "settings.monitorSub": "Quota auto-collection interval and agy HTTP timeout.",
     "settings.collectInterval": "Collection Interval (min)",
@@ -347,33 +329,7 @@ const LOCALE_DATA = {
     "logs.level": "Level:",
     "logs.all": "All",
     "logs.clear": "Clear",
-    "autocontinue.cardTitle": "Auto Continue",
-    "autocontinue.enabled": "Enabled",
-    "autocontinue.disabled": "Disabled",
-    "autocontinue.lastTrigger": "Last Trigger",
-    "autocontinue.totalSuccess": "Refilled {{n}} times",
-    "autocontinue.target": "Target",
-    "autocontinue.notYet": "Not yet triggered",
-    "autocontinue.settingsTitle": "Auto Continue Settings",
-    "autocontinue.settingsSub": "Automatically send 'continue' when quota refreshes. Checked on each quota collection.",
-    "autocontinue.enableLabel": "Enable Auto Continue",
-    "autocontinue.conversationId": "Conversation UUID",
-    "autocontinue.conversationIdHint": "Copy from agy TUI → /resume → exit prompt",
-    "autocontinue.prompt": "Prompt",
-    "autocontinue.exhaustedThreshold": "Exhaust Threshold %",
-    "autocontinue.exhaustedThresholdHint": "Average remaining below this = exhausted",
-    "autocontinue.refreshThreshold": "Refresh Threshold %",
-    "autocontinue.refreshThresholdHint": "Average remaining above this = refreshed",
-    "autocontinue.logTitle": "Trigger History",
-    "autocontinue.logTime": "Time",
-    "autocontinue.logResult": "Result",
-    "autocontinue.logDuration": "Duration",
-    "autocontinue.logBefore": "Before",
-    "autocontinue.logAfter": "After",
-    "autocontinue.success": "Success",
-    "autocontinue.fail": "Fail",
-    "autocontinue.saved": "AutoContinue settings saved",
-    "autocontinue.saveFailed": "Save failed: {{msg}}",
+
     "time.soon": "Soon",
     "time.secondsAgo": "{{n}}s ago",
     "time.minutesAgo": "{{n}}m ago",
@@ -438,8 +394,6 @@ const Store = {
   countdownTimer: null,
   lastEventAt: Date.now(),
   saving: false,
-  autoContinueLogs: [],
-  autoContinueState: null,
 };
 
 const PageTitles = {
@@ -532,8 +486,18 @@ function progressClass(pct) {
   if (pct > 50) return "bar-yellow";
   return "bar-green";
 }
-function badgeClassForStatus(success) {
+function badgeClassForStatus(success, stderr = "") {
+  if (stderr === "执行中...") {
+    return "badge-info";
+  }
   return success ? "badge-success" : "badge-danger";
+}
+
+function getStatusText(success, stderr = "") {
+  if (stderr === "执行中...") {
+    return "执行中...";
+  }
+  return success ? t("badge.success") : t("badge.fail");
 }
 
 function toast(msg, type = "info") {
@@ -548,13 +512,7 @@ async function refreshStatus() {
   try {
     const data = await api.get("/api/status");
     Store.status = data;
-    if (data.autoContinue) Store.autoContinueState = data.autoContinue;
   } catch (e) { console.warn("status refresh failed", e); }
-}
-async function refreshAutoContinueState() {
-  try {
-    Store.autoContinueState = await api.get("/api/monitor/auto-continue/status");
-  } catch (e) { /* no data yet */ }
 }
 async function refreshLatestQuota() {
   try {
@@ -586,11 +544,6 @@ async function refreshQuotaHistory(hours) {
 }
 async function refreshLogs() {
   Store.logs = await api.get("/api/logs?limit=300");
-}
-async function refreshAutoContinueLogs() {
-  try {
-    Store.autoContinueLogs = await api.get("/api/monitor/auto-continue/logs?limit=20");
-  } catch (e) { /* no data yet */ }
 }
 
 function renderTopbar() {
@@ -687,17 +640,25 @@ function renderOverview() {
       <div class="card-title">${t("quota.latestTitle")} <span class="card-title-sub">${q.time ? fmtTime(q.time, true) : ""} · ${escapeHtml(q.planName || q.email || "—")}</span></div>
       <table class="model-table">
         <thead><tr>
-          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.tag")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
+          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.tag")}</th><th>${t("table.used")}</th><th>${t("table.remaining")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
         </tr></thead>
         <tbody>
         ${q.models.map((m) => {
           const countdown = m.resetTime ? fmtCountdown(m.resetTime) : "—";
           const resetTime = m.resetTime ? fmtTime(m.resetTime, true) : "—";
           const tag = m.tagTitle ? `<span class="badge badge-info">${escapeHtml(m.tagTitle)}</span>` : "—";
+          const hasQuotaData = m.usedPct != null || m.remainingPct != null;
+          const usedPct = m.usedPct != null ? Math.round(m.usedPct * 100) / 100 : 0;
+          const remainingPct = m.remainingPct != null ? Math.round(m.remainingPct * 100) / 100 : 0;
+          const quotaBar = (pct, cls) => hasQuotaData
+            ? `<div class="bar-cell"><div class="bar ${cls}" style="width:${pct}%"></div><span>${pct}%</span></div>`
+            : '<span style="color:var(--text-3)">—</span>';
           return `<tr>
             <td><span class="model-id">${escapeHtml(m.id.replace("MODEL_PLACEHOLDER_", ""))}</span></td>
             <td class="model-name">${escapeHtml(m.display || "—")}</td>
             <td>${tag}</td>
+            <td>${quotaBar(usedPct, "bar-used")}</td>
+            <td>${quotaBar(remainingPct, "bar-remaining")}</td>
             <td class="countdown" data-cd-model="${escapeAttr(m.resetTime)}">${countdown}</td>
             <td>${resetTime}</td>
             <td>${m.exhausted ? '<span class="badge badge-danger">' + t("badge.exhausted") + '</span>' : '<span class="badge badge-success">' + t("badge.normal") + '</span>'}</td>
@@ -726,23 +687,6 @@ function renderOverview() {
     </div>
   </div>`);
 
-  const ac = s?.autoContinue || Store.autoContinueState || null;
-  const acEnabled = Store.config?.autoContinue?.enabled;
-  html.push(`<div class="card">
-    <div class="card-title">${t("autocontinue.cardTitle")} <span class="card-title-sub">${acEnabled ? '<span class="badge badge-success">' + t("autocontinue.enabled") + '</span>' : '<span class="badge badge-neutral">' + t("autocontinue.disabled") + '</span>'}</span></div>
-    <div class="grid-2" style="margin-bottom:0">
-      <div>
-        <div class="metric-label">${t("autocontinue.lastTrigger")}</div>
-        <div style="margin-top:6px">${ac?.lastTrigger ? fmtAgo(ac.lastTrigger.run_at || ac.lastTrigger.runAt) + ' ' + (ac.lastTrigger.success ? '<span class="badge badge-success">' + t("autocontinue.success") + '</span>' : '<span class="badge badge-danger">' + t("autocontinue.fail") + '</span>') : '<span class="badge badge-neutral">' + t("autocontinue.notYet") + '</span>'}</div>
-        <div class="metric-extra">${ac?.lastAvgUsed != null ? ac.lastAvgUsed.toFixed(1) + '% → ' + (ac?.lastAvgRemaining != null ? ac.lastAvgRemaining.toFixed(1) + '%' : '—') : ''}</div>
-      </div>
-      <div>
-        <div class="metric-label">${t("autocontinue.target")}</div>
-        <div style="margin-top:6px;font-family:monospace;font-size:12px;color:var(--text-2)">${Store.config?.autoContinue?.conversationId ? escapeHtml(Store.config.autoContinue.conversationId.substring(0, 8) + "…") : "—"}</div>
-      </div>
-    </div>
-  </div>`);
-
   $("#content").innerHTML = html.join("");
 
   $("#quickCollect").onclick = async () => {
@@ -759,10 +703,43 @@ function renderOverview() {
   $("#quickRun").onclick = async () => {
     try {
       toast(t("toast.executing"), "info");
-      await api.send("/api/scheduler/run-now", "POST");
-      toast(t("toast.executed"), "success");
-    } catch (e) { toast(t("toast.executeFail", { msg: e.message }), "error"); }
+      const result = await api.send("/api/scheduler/run-now", "POST");
+      const newExecutionId = result.execution?.id;
+      
+      // 立即刷新一次
+      await refreshExecutionHistory();
+      await refreshStatus();
+      renderOverview();
+      
+      // 如果有新记录的 id，定时刷新直到记录更新
+      if (newExecutionId) {
+        const checkInterval = setInterval(async () => {
+          await refreshExecutionHistory();
+          renderOverview();
+          
+          // 检查记录是否已经更新（不再是“执行中...”）
+          const exec = Store.executionHistory?.find(e => e.id === newExecutionId);
+          if (exec && exec.stderr !== "执行中...") {
+            clearInterval(checkInterval);
+            await refreshStatus();
+            renderOverview();
+            toast(t("toast.triggered"), "success");
+          }
+        }, 2000);
+        
+        // 最多检查30秒
+        setTimeout(() => clearInterval(checkInterval), 30000);
+      } else {
+        toast(t("toast.triggered"), "success");
+      }
+    } catch (e) {
+      // 即使出错也继续执行下面的刷新
+      await refreshExecutionHistory();
+      await refreshStatus();
+      renderOverview();
+    }
   };
+  bindExecutionRowToggles();
 }
 
 function renderExecutionRows(rows, withLimit = false) {
@@ -775,8 +752,8 @@ function renderExecutionRows(rows, withLimit = false) {
     ${limited.map((r) => `<tr class="execution-row" data-id="${r.id}">
       <td>${fmtTime(r.runAt, true)}</td>
       <td>${r.triggeredBy === "manual" ? '<span class="badge badge-info">' + t("badge.manual") + '</span>' : '<span class="badge badge-neutral">' + t("badge.auto") + '</span>'}</td>
-      <td class="num">${r.durationMs != null ? r.durationMs + ' ms' : '—'}</td>
-      <td><span class="badge ${badgeClassForStatus(r.success)}">${r.success ? t("badge.success") : t("badge.fail")}</span></td>
+      <td class="num">${r.durationMs != null && r.durationMs > 0 ? r.durationMs + ' ms' : '—'}</td>
+      <td><span class="badge ${badgeClassForStatus(r.success, r.stderr)}">${getStatusText(r.success, r.stderr)}</span></td>
       <td><span style="color:var(--text-3);font-size:12px">${t("execTable.expand")}</span></td>
     </tr>
     <tr class="execution-detail-row" data-detail-id="${r.id}"><td colspan="5">${renderExecutionDetail(r)}</td></tr>`).join("")}
@@ -786,19 +763,38 @@ function renderExecutionRows(rows, withLimit = false) {
 
 function renderExecutionDetail(r) {
   const stdout = r.stdout ? `<div class="stdout">${t("execDetail.stdout")}\n${escapeHtml(r.stdout)}</div>` : "";
-  const stderr = r.stderr ? `<div class="stderr">${t("execDetail.stderr")}\n${escapeHtml(r.stderr)}</div>` : "";
-  if (!stdout && !stderr) return `<div class="execution-detail show">${t("execDetail.noOutput")}</div>`;
-  return `<div class="execution-detail show">${stdout}${stderr}</div>`;
+  const stderr = r.stderr && r.stderr !== "执行中..." ? `<div class="stderr">${t("execDetail.stderr")}\n${escapeHtml(r.stderr)}</div>` : "";
+  const content = [];
+  if (stdout) content.push(stdout);
+  if (stderr) content.push(stderr);
+  if (content.length === 0) {
+    if (r.success) {
+      content.push(`<div class="execution-detail">${t("execDetail.noOutput")} (命令执行成功)</div>`);
+    } else {
+      content.push(`<div class="execution-detail">${t("execDetail.noOutput")}</div>`);
+    }
+  }
+  return `<div class="execution-detail">${content.join("")}</div>`;
 }
 
 function bindExecutionRowToggles() {
-  $$(".execution-row").forEach((tr) => {
-    tr.addEventListener("click", () => {
-      const id = tr.getAttribute("data-id");
-      const detailTr = $(`.execution-detail-row[data-detail-id="${id}"] .execution-detail`);
-      if (detailTr) detailTr.classList.toggle("show");
-    });
-  });
+  // 使用事件委托，避免重复绑定事件，绑定在 #content 上
+  const content = document.querySelector("#content");
+  if (content) {
+    // 先移除之前的监听器（使用命名函数来移除）
+    content.removeEventListener("click", handleExecutionRowClick);
+    content.addEventListener("click", handleExecutionRowClick);
+  }
+}
+
+function handleExecutionRowClick(e) {
+  const tr = e.target.closest(".execution-row");
+  if (!tr) return;
+  const id = tr.getAttribute("data-id");
+  const detailTr = document.querySelector(`.execution-detail-row[data-detail-id="${id}"] .execution-detail`);
+  if (detailTr) {
+    detailTr.classList.toggle("show");
+  }
 }
 
 function renderScheduler() {
@@ -844,20 +840,62 @@ function renderScheduler() {
 
   const stopBtn = $("#btnStopDaemon");
   if (stopBtn) stopBtn.onclick = async () => {
-    try { await api.send("/api/scheduler/stop", "POST"); await refreshStatus(); renderScheduler(); toast(t("toast.stopped"), "success"); }
+    try { await api.send("/api/scheduler/stop", "POST"); await refreshStatus(); renderTopbar(); renderScheduler(); toast(t("toast.stopped"), "success"); }
     catch (e) { toast(t("toast.stopFail", { msg: e.message }), "error"); }
   };
   const startBtn = $("#btnStartDaemon");
   if (startBtn) startBtn.onclick = async () => {
-    try { await api.send("/api/scheduler/start", "POST"); await refreshStatus(); renderScheduler(); toast(t("toast.started"), "success"); }
+    try { await api.send("/api/scheduler/start", "POST"); await refreshStatus(); renderTopbar(); renderScheduler(); toast(t("toast.started"), "success"); }
     catch (e) { toast(t("toast.startFail", { msg: e.message }), "error"); }
   };
   $("#btnRunNow").onclick = async () => {
-    try { toast(t("toast.executing"), "info"); await api.send("/api/scheduler/run-now", "POST"); await refreshStatus(); await refreshExecutionHistory(); renderScheduler(); toast(t("toast.triggered"), "success"); }
-    catch (e) { toast(t("toast.executeFail", { msg: e.message }), "error"); }
+    try { 
+      toast(t("toast.executing"), "info"); 
+      const result = await api.send("/api/scheduler/run-now", "POST");
+      const newExecutionId = result.execution?.id;
+      
+      // 立即刷新一次
+      await refreshStatus(); 
+      await refreshExecutionHistory(); 
+      renderScheduler();
+      
+      // 如果有新记录 id，定时刷新直到更新
+      if (newExecutionId) {
+        const checkInterval = setInterval(async () => {
+          await refreshExecutionHistory();
+          await refreshStatus();
+          renderScheduler();
+          
+          const exec = Store.executionHistory?.find(e => e.id === newExecutionId);
+          if (exec && exec.stderr !== "执行中...") {
+            clearInterval(checkInterval);
+            renderScheduler();
+            toast(t("toast.triggered"), "success");
+          }
+        }, 2000);
+        
+        setTimeout(() => clearInterval(checkInterval), 30000);
+      } else {
+        toast(t("toast.triggered"), "success");
+      }
+    } catch (e) {
+      // 即使出错也继续刷新
+      await refreshStatus(); 
+      await refreshExecutionHistory(); 
+      renderScheduler();
+    }
   };
   bindExecutionRowToggles();
 }
+
+function modelPoolName(id, display) {
+  const lower = (id + " " + (display || "")).toLowerCase();
+  if (lower.includes("gemini")) return "Gemini";
+  if (lower.includes("claude")) return "Claude";
+  return display || id.replace("MODEL_PLACEHOLDER_", "");
+}
+
+const POOL_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#8b5cf6", "#0891b2"];
 
 async function renderTrends() {
   await refreshQuotaHistory(Store.trendsHours);
@@ -871,15 +909,20 @@ async function renderTrends() {
   if (Store.quotaHistory.length === 0) {
     html.push(`<div class="card"><div class="empty">${t("trends.noData")}</div></div>`);
   } else {
-    html.push(`<div class="card">
-      <div class="card-title">Prompt Credits ${t("trends.usagePct")}</div>
-      <div class="chart-container"><canvas id="chartPromptCredits"></canvas></div>
-    </div>`);
-    if (Store.quotaHistory.some(d => d.flowCredits?.limit)) {
+    const poolGroups = {};
+    for (const model of Store.models) {
+      const pool = modelPoolName(model.id, model.display);
+      if (!poolGroups[pool]) poolGroups[pool] = [];
+      poolGroups[pool].push(model);
+    }
+    let poolIdx = 0;
+    for (const [poolName, models] of Object.entries(poolGroups)) {
+      const chartId = "chartPool_" + poolName.replace(/[^a-zA-Z0-9_]/g, "_");
       html.push(`<div class="card">
-        <div class="card-title">Flow Credits ${t("trends.usagePct")}</div>
-        <div class="chart-container"><canvas id="chartFlowCredits"></canvas></div>
+        <div class="card-title">${escapeHtml(poolName)} ${t("trends.usagePct")}</div>
+        <div class="chart-container"><canvas id="${chartId}"></canvas></div>
       </div>`);
+      poolIdx++;
     }
   }
 
@@ -894,37 +937,53 @@ async function renderTrends() {
   });
 
   if (Store.quotaHistory.length > 0) {
-    drawCreditChart("chartPromptCredits", t("metric.promptCredits"), Store.quotaHistory.map(d => d.credits?.limit ? (d.credits.used / d.credits.limit) * 100 : null));
-    if (Store.quotaHistory.some(d => d.flowCredits?.limit)) {
-      drawCreditChart("chartFlowCredits", t("metric.flowCredits"), Store.quotaHistory.map(d => d.flowCredits?.limit ? (d.flowCredits.used / d.flowCredits.limit) * 100 : null));
+    const poolGroups = {};
+    for (const model of Store.models) {
+      const pool = modelPoolName(model.id, model.display);
+      if (!poolGroups[pool]) poolGroups[pool] = [];
+      poolGroups[pool].push(model);
+    }
+    let poolIdx = 0;
+    for (const [poolName, models] of Object.entries(poolGroups)) {
+      const chartId = "chartPool_" + poolName.replace(/[^a-zA-Z0-9_]/g, "_");
+      const datasets = models.map((model, mi) => {
+        const values = Store.quotaHistory.map(d => {
+          const m = d.models.find(m => m.id === model.id);
+          return m?.usedPct != null ? m.usedPct : null;
+        });
+        const color = POOL_COLORS[mi % POOL_COLORS.length];
+        return {
+          label: model.display || model.id.replace("MODEL_PLACEHOLDER_", ""),
+          data: values,
+          borderColor: color,
+          backgroundColor: color + "22",
+          fill: false,
+          tension: 0.3,
+          spanGaps: true,
+          pointRadius: values.length > 50 ? 0 : 3,
+        };
+      });
+      drawPoolChart(chartId, poolName, datasets);
+      poolIdx++;
     }
   }
 }
 
-function drawCreditChart(canvasId, label, values) {
+function drawPoolChart(canvasId, poolName, datasets) {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;
   const labels = Store.quotaHistory.map((d) => fmtTime(d.time));
   if (Store.chartInstances[canvasId]) Store.chartInstances[canvasId].destroy();
+  const showLegend = datasets.length > 1 || datasets.some(d => d.label && d.label !== poolName);
   Store.chartInstances[canvasId] = new Chart(canvas, {
     type: "line",
-    data: {
-      labels,
-      datasets: [{
-        label,
-        data: values,
-        borderColor: "#2563eb",
-        backgroundColor: "#2563eb22",
-        fill: true,
-        tension: 0.3,
-        spanGaps: true,
-        pointRadius: values.length > 50 ? 0 : 3,
-      }],
-    },
+    data: { labels, datasets },
     options: {
       responsive: true,
       maintainAspectRatio: false,
-      plugins: { legend: { display: false } },
+      plugins: {
+        legend: { display: showLegend, position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+      },
       scales: {
         y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" }, ticks: { callback: v => v + "%" } },
         x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: "#9ca3af" } },
@@ -968,6 +1027,11 @@ function renderSettings() {
       <label class="form-label">${t("settings.args")}</label>
       <input class="form-input" type="text" id="cfg-args" value="${escapeAttr(c.command.args.join(' '))}">
       <div class="form-hint">${t("settings.argsHint")}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("settings.retries")}</label>
+      <input class="form-input" type="number" id="cfg-maxRetries" value="${c.command.maxRetries}" min="0" max="20">
+      <div class="form-hint">${t("settings.retriesHint")}</div>
     </div>
   </div>`);
 
@@ -1025,59 +1089,6 @@ function renderSettings() {
     </div>
   </div>`);
 
-  const ac = Store.config?.autoContinue;
-  html.push(`<div class="card">
-    <div class="card-title">${t("autocontinue.settingsTitle")}</div>
-    <div class="fieldset-sub">${t("autocontinue.settingsSub")}</div>
-    <div class="form-group">
-      <label class="form-label" style="display:flex;align-items:center;gap:8px">
-        <input type="checkbox" id="cfg-ac-enabled" ${ac?.enabled ? 'checked' : ''} style="width:16px;height:16px">
-        ${t("autocontinue.enableLabel")}
-      </label>
-    </div>
-    <div class="form-group">
-      <label class="form-label">${t("autocontinue.conversationId")}</label>
-      <input class="form-input" type="text" id="cfg-ac-conversationId" value="${escapeAttr(ac?.conversationId || '')}" placeholder="0891d29c-6b8f-40d0-9857-408586519998">
-      <div class="form-hint">${t("autocontinue.conversationIdHint")}</div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">${t("autocontinue.prompt")}</label>
-      <input class="form-input" type="text" id="cfg-ac-prompt" value="${escapeAttr(ac?.prompt || '继续')}">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">${t("autocontinue.exhaustedThreshold")}</label>
-        <input class="form-input" type="number" id="cfg-ac-exhausted" value="${ac?.exhaustedThreshold ?? 20}" min="0" max="100">
-        <div class="form-hint">${t("autocontinue.exhaustedThresholdHint")}</div>
-      </div>
-      <div class="form-group">
-        <label class="form-label">${t("autocontinue.refreshThreshold")}</label>
-        <input class="form-input" type="number" id="cfg-ac-refresh" value="${ac?.refreshThreshold ?? 50}" min="0" max="100">
-        <div class="form-hint">${t("autocontinue.refreshThresholdHint")}</div>
-      </div>
-    </div>
-  </div>`);
-
-  if (Store.autoContinueLogs.length > 0) {
-    html.push(`<div class="card">
-      <div class="card-title">${t("autocontinue.logTitle")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>
-      <table>
-        <thead><tr>
-          <th>${t("autocontinue.logTime")}</th><th>${t("autocontinue.logResult")}</th><th class="num">${t("autocontinue.logDuration")}</th><th class="num">${t("autocontinue.logBefore")}</th><th class="num">${t("autocontinue.logAfter")}</th>
-        </tr></thead>
-        <tbody>
-        ${Store.autoContinueLogs.map((r) => `<tr>
-          <td>${fmtTime(r.run_at, true)}</td>
-          <td><span class="badge ${r.success ? 'badge-success' : 'badge-danger'}">${r.success ? t("autocontinue.success") : t("autocontinue.fail")}</span></td>
-          <td class="num">${r.duration_ms != null ? r.duration_ms + ' ms' : '—'}</td>
-          <td class="num">${r.quota_used_before != null ? r.quota_used_before.toFixed(1) + '%' : '—'}</td>
-          <td class="num">${r.quota_used_after != null ? r.quota_used_after.toFixed(1) + '%' : '—'}</td>
-        </tr>`).join("")}
-        </tbody>
-      </table>
-    </div>`);
-  }
-
   html.push(`<div class="action-bar" style="margin-bottom: 30px">
     <button class="btn btn-primary" id="btnSaveConfig">${t("settings.save")}</button>
     <button class="btn" id="btnReloadConfig">${t("settings.reload")}</button>
@@ -1101,19 +1112,13 @@ function renderSettings() {
         command: {
           executable: $("#cfg-executable").value,
           args,
+          maxRetries: parseInt($("#cfg-maxRetries").value, 10) || 3,
         },
         monitor: {
           intervalMinutes: parseInt($("#cfg-monInterval").value, 10),
           agyTimeoutMs: parseInt($("#cfg-agyTimeout").value, 10),
         },
         web: { trayEnabled },
-        autoContinue: {
-          enabled: $("#cfg-ac-enabled").checked,
-          conversationId: $("#cfg-ac-conversationId").value.trim(),
-          prompt: $("#cfg-ac-prompt").value.trim() || "继续",
-          exhaustedThreshold: parseInt($("#cfg-ac-exhausted").value, 10) || 20,
-          refreshThreshold: parseInt($("#cfg-ac-refresh").value, 10) || 50,
-        },
       };
       Store.config = await api.send("/api/config", "PUT", payload);
       toast(t("toast.saved"), "success");
@@ -1130,18 +1135,14 @@ function renderSettings() {
   $("#btnResetConfig").onclick = () => {
     $("#cfg-startTime").value = "08:00";
     $("#cfg-endTime").value = "23:30";
-    $("#cfg-intervalMinutes").value = "30";
+    $("#cfg-intervalMinutes").value = "60";
     $("#cfg-executable").value = "agy";
-    $("#cfg-args").value = "--prompt 你好";
+    $("#cfg-args").value = "--prompt hi";
+    $("#cfg-maxRetries").value = "3";
     $("#cfg-monInterval").value = "10";
     $("#cfg-agyTimeout").value = "10000";
     const tb = $("#cfg-trayEnabled");
     if (tb) tb.checked = false;
-    $("#cfg-ac-enabled").checked = false;
-    $("#cfg-ac-conversationId").value = "";
-    $("#cfg-ac-prompt").value = "继续";
-    $("#cfg-ac-exhausted").value = "20";
-    $("#cfg-ac-refresh").value = "50";
     toast(t("toast.resetDone"), "info");
   };
 
@@ -1305,13 +1306,6 @@ function connectSSE() {
     }
     renderTopbar();
   }));
-  es.addEventListener("autocontinue", onEvent((d) => {
-    refreshStatus();
-    refreshAutoContinueLogs();
-    if (location.hash === "#overview" || location.hash === "#settings") {
-      setRoute(location.hash.replace("#", "") || "overview");
-    }
-  }));
   es.addEventListener("log", onEvent((entry) => {
     Store.logs.push(entry);
     if (Store.logs.length > 500) Store.logs.splice(0, Store.logs.length - 500);
@@ -1332,8 +1326,6 @@ async function boot() {
   await refreshLatestQuota();
   await refreshExecutionHistory();
   await refreshLogs();
-  await refreshAutoContinueLogs();
-  await refreshAutoContinueState();
   renderTopbar();
   applyI18n();
   $("#langToggle").onclick = () => {
@@ -1346,6 +1338,14 @@ async function boot() {
 
   // sidebar toggle
   const sidebarToggle = $("#sidebarToggle");
+
+  // 导航点击：阻止 <a> 原生 hash 跳转，避免与 hashchange 冲突
+  $$(".nav-item").forEach((el) => {
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      setRoute(el.getAttribute("data-route") || "overview");
+    });
+  });
   const appEl = $("#app");
   const storedSidebar = localStorage.getItem("agy-sidebar");
   if (storedSidebar === "collapsed") appEl.classList.add("sidebar-collapsed");

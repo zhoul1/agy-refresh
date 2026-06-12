@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test";
-import { existsSync, rmSync, mkdirSync, readFileSync } from "fs";
+import { existsSync, rmSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { join } from "path";
-import { validateConfig, saveConfig, ConfigValidationError, DEFAULT_CONFIG } from "../src/lib/config";
+import { loadConfig, validateConfig, saveConfig, ConfigValidationError, DEFAULT_CONFIG } from "../src/lib/config";
 
 const TMP_DIR = join(import.meta.dir, ".tmp-config");
 const TMP_CFG = join(TMP_DIR, "config.json");
@@ -72,6 +72,22 @@ describe("validateConfig", () => {
       .toThrow(ConfigValidationError);
   });
 
+  it("应拒绝非法的 maxRetries", () => {
+    expect(() => validateConfig({ command: { executable: "agy", args: [], maxRetries: -1 } }))
+      .toThrow(ConfigValidationError);
+    expect(() => validateConfig({ command: { executable: "agy", args: [], maxRetries: 1.5 } }))
+      .toThrow(ConfigValidationError);
+    expect(() => validateConfig({ command: { executable: "agy", args: [], maxRetries: "abc" as any } }))
+      .toThrow(ConfigValidationError);
+  });
+
+  it("应接受合法的 maxRetries", () => {
+    const result = validateConfig({ command: { executable: "agy", args: [], maxRetries: 0 } });
+    expect(result.command.maxRetries).toBe(0);
+    const result2 = validateConfig({ command: { executable: "agy", args: [], maxRetries: 5 } });
+    expect(result2.command.maxRetries).toBe(5);
+  });
+
   it("应拒绝非字符串数组的 args", () => {
     expect(() => validateConfig({ command: { executable: "agy", args: [1, 2] as any } }))
       .toThrow(ConfigValidationError);
@@ -105,5 +121,65 @@ describe("saveConfig", () => {
     expect(() => saveConfig({ scheduler: { startTime: "25:00", endTime: "20:00", intervalMinutes: 30 } }, TMP_CFG))
       .toThrow(ConfigValidationError);
     expect(existsSync(TMP_CFG)).toBe(false);
+  });
+});
+
+describe("loadConfig", () => {
+  it("文件不存在时应回退到默认配置", () => {
+    const cfg = loadConfig(join(TMP_DIR, "nonexistent.json"));
+    expect(cfg.scheduler.startTime).toBe(DEFAULT_CONFIG.scheduler.startTime);
+    expect(cfg.scheduler.intervalMinutes).toBe(DEFAULT_CONFIG.scheduler.intervalMinutes);
+    expect(cfg.monitor.intervalMinutes).toBe(DEFAULT_CONFIG.monitor.intervalMinutes);
+  });
+
+  it("应加载合法配置文件", () => {
+    writeFileSync(TMP_CFG, JSON.stringify({
+      scheduler: { startTime: "09:00", endTime: "22:00", intervalMinutes: 45 },
+      command: { executable: "agy", args: ["--prompt", "hi"] },
+      monitor: { intervalMinutes: 5, agyTimeoutMs: 8000 },
+      web: { port: 6789, host: "0.0.0.0" },
+    }));
+    const cfg = loadConfig(TMP_CFG);
+    expect(cfg.scheduler.startTime).toBe("09:00");
+    expect(cfg.scheduler.intervalMinutes).toBe(45);
+    expect(cfg.command.executable).toBe("agy");
+    expect(cfg.monitor.intervalMinutes).toBe(5);
+    expect(cfg.web.port).toBe(6789);
+  });
+
+  it("JSON 解析失败时应回退到默认配置", () => {
+    writeFileSync(TMP_CFG, "{invalid-json}");
+    const cfg = loadConfig(TMP_CFG);
+    expect(cfg.scheduler.startTime).toBe(DEFAULT_CONFIG.scheduler.startTime);
+  });
+
+  it("缺失字段应合并默认值", () => {
+    writeFileSync(TMP_CFG, JSON.stringify({
+      scheduler: { startTime: "10:00", endTime: "20:00", intervalMinutes: 30 },
+    }));
+    const cfg = loadConfig(TMP_CFG);
+    expect(cfg.scheduler.startTime).toBe("10:00");
+    expect(cfg.command.executable).toBe(DEFAULT_CONFIG.command.executable);
+    expect(cfg.monitor.intervalMinutes).toBe(DEFAULT_CONFIG.monitor.intervalMinutes);
+    expect(cfg.web.port).toBe(DEFAULT_CONFIG.web.port);
+  });
+
+  it("startTime >= endTime 时应回退到默认配置", () => {
+    writeFileSync(TMP_CFG, JSON.stringify({
+      scheduler: { startTime: "20:00", endTime: "08:00", intervalMinutes: 30 },
+      command: { executable: "agy", args: ["--prompt", "hi"] },
+    }));
+    const cfg = loadConfig(TMP_CFG);
+    expect(cfg.scheduler.startTime).toBe(DEFAULT_CONFIG.scheduler.startTime);
+    expect(cfg.scheduler.endTime).toBe(DEFAULT_CONFIG.scheduler.endTime);
+  });
+
+  it("非法字段值应回退到默认值", () => {
+    writeFileSync(TMP_CFG, JSON.stringify({
+      scheduler: { startTime: "25:00", endTime: "22:00", intervalMinutes: -1 },
+    }));
+    const cfg = loadConfig(TMP_CFG);
+    expect(cfg.scheduler.startTime).toBe(DEFAULT_CONFIG.scheduler.startTime);
+    expect(cfg.scheduler.intervalMinutes).toBe(DEFAULT_CONFIG.scheduler.intervalMinutes);
   });
 });
