@@ -528,6 +528,14 @@ async function refreshExecutionHistory() {
 async function refreshConfig() {
   Store.config = await api.get("/api/config");
 }
+/** 模型所属池的排序键 Gemini=0 Claude=1 GPT-OSS=2 其他=3 */
+function poolOrderKey(id, display) {
+  const lower = (id + " " + (display || "")).toLowerCase();
+  if (lower.includes("gemini")) return 0;
+  if (lower.includes("claude")) return 1;
+  return 2; // GPT-OSS / 其余
+}
+
 async function refreshQuotaHistory(hours) {
   const data = await api.get(`/api/quota/history?hours=${hours}`);
   Store.quotaHistory = data;
@@ -541,6 +549,7 @@ async function refreshQuotaHistory(hours) {
       }
     }
   }
+  Store.models.sort((a, b) => poolOrderKey(a.id, a.display) - poolOrderKey(b.id, b.display));
 }
 async function refreshLogs() {
   Store.logs = await api.get("/api/logs?limit=300");
@@ -942,6 +951,10 @@ async function renderTrends() {
       const pool = modelPoolName(model.id, model.display);
       if (!poolGroups[pool]) poolGroups[pool] = [];
       poolGroups[pool].push(model);
+    }
+    // 池内模型按显示名排序
+    for (const poolName of Object.keys(poolGroups)) {
+      poolGroups[poolName].sort((a, b) => (a.display || a.id).localeCompare(b.display || b.id));
     }
     let poolIdx = 0;
     for (const [poolName, models] of Object.entries(poolGroups)) {
