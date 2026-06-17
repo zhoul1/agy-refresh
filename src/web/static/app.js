@@ -983,6 +983,13 @@ function drawPoolChart(canvasId, poolName, datasets) {
       maintainAspectRatio: false,
       plugins: {
         legend: { display: showLegend, position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
+        tooltip: {
+          mode: "index",
+          intersect: false,
+          callbacks: {
+            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(1) + "%" : "—"}`,
+          },
+        },
       },
       scales: {
         y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" }, ticks: { callback: v => v + "%" } },
