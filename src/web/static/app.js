@@ -1262,10 +1262,10 @@ function applyI18n() {
   const langBtn = $("#langToggle");
   if (langBtn) langBtn.textContent = _lang === "zh" ? t("lang.en") : t("lang.zh");
   if (Store.status) renderTopbar();
-  const toggle = $("#sidebarToggle");
-  if (toggle) {
-    const collapsed = $("#app").classList.contains("sidebar-collapsed");
-    toggle.title = collapsed ? (_lang === "zh" ? "展开侧边栏" : "Expand sidebar") : (_lang === "zh" ? "收起侧边栏" : "Collapse sidebar");
+  const ham = $("#hamburgerBtn");
+  if (ham) {
+    const closed = $("#app").classList.contains("sidebar-closed");
+    ham.title = closed ? (_lang === "zh" ? "展开侧边栏" : "Open sidebar") : (_lang === "zh" ? "收起侧边栏" : "Close sidebar");
   }
   const cur = location.hash.replace("#", "") || "overview";
   const titleEl = $("#pageTitle");
@@ -1356,30 +1356,49 @@ async function boot() {
   const initial = location.hash.replace("#", "") || "overview";
   setRoute(initial);
 
-  // sidebar toggle
-  const sidebarToggle = $("#sidebarToggle");
+  // sidebar drawer toggle (mobile-style overlay)
+  const hamburgerBtn = $("#hamburgerBtn");
+  const appEl = $("#app");
 
-  // 导航点击：阻止 <a> 原生 hash 跳转，避免与 hashchange 冲突
+  function closeSidebar() {
+    appEl.classList.add("sidebar-closed");
+    hamburgerBtn.innerHTML = "☰";
+    hamburgerBtn.title = _lang === "zh" ? "展开侧边栏" : "Open sidebar";
+    localStorage.setItem("agy-sidebar", "collapsed");
+  }
+  function openSidebar() {
+    appEl.classList.remove("sidebar-closed");
+    hamburgerBtn.innerHTML = "✕";
+    hamburgerBtn.title = _lang === "zh" ? "收起侧边栏" : "Close sidebar";
+    localStorage.setItem("agy-sidebar", "open");
+  }
+  function toggleSidebar() {
+    if (appEl.classList.contains("sidebar-closed")) {
+      openSidebar();
+    } else {
+      closeSidebar();
+    }
+  }
+
+  // 导航点击：阻止 <a> 原生 hash 跳转，避免与 hashchange 冲突，同时关闭侧边栏
   $$(".nav-item").forEach((el) => {
     el.addEventListener("click", (e) => {
       e.preventDefault();
       setRoute(el.getAttribute("data-route") || "overview");
+      closeSidebar();
     });
   });
-  const appEl = $("#app");
-  const storedSidebar = localStorage.getItem("agy-sidebar");
-  if (storedSidebar === "collapsed") appEl.classList.add("sidebar-collapsed");
-  if (sidebarToggle) {
-    sidebarToggle.title = _lang === "zh" ? "收起侧边栏" : "Collapse sidebar";
-    sidebarToggle.onclick = () => {
-      appEl.classList.toggle("sidebar-collapsed");
-      const collapsed = appEl.classList.contains("sidebar-collapsed");
-      sidebarToggle.innerHTML = collapsed ? "▶" : "◀";
-      sidebarToggle.title = collapsed
-        ? (_lang === "zh" ? "展开侧边栏" : "Expand sidebar")
-        : (_lang === "zh" ? "收起侧边栏" : "Collapse sidebar");
-      localStorage.setItem("agy-sidebar", collapsed ? "collapsed" : "");
-    };
+
+  if (hamburgerBtn) hamburgerBtn.onclick = toggleSidebar;
+
+  // Restore sidebar state from localStorage
+  // Start with sidebar open by default (no state saved or unknown)
+  // Only collapse if explicitly set in previous session
+  const savedState = localStorage.getItem("agy-sidebar");
+  if (savedState === "collapsed") {
+    closeSidebar();
+  } else {
+    openSidebar();
   }
 
   connectSSE();

@@ -8,6 +8,20 @@
 - `README.md` - 项目说明文档。
 - `PROJECT_STRUCTURE.md` - 本项目文件索引文档。
 - `GEMINI.md` - AI 开发规范与提示词约束文件。
+- `ecosystem.config.cjs` - PM2 进程守护配置
+- `pm2-wrapper.cjs` - PM2 包装器
+- `startup-pm2.bat` - PM2 启动脚本
+- `scripts/`
+  - `check-db.ts` - 数据库检查脚本
+  - `check-duplicate-records.js` - 重复记录检查
+  - `check-failed-record.js` - 失败记录检查
+  - `check-record-137.js` - 特定记录检查
+  - `clean-duplicate-records.js` - 重复记录清理
+  - `capture-output.ps1` - PowerShell 转录包装脚本，用于捕获 agy CLI 的 WriteConsole 输出
+  - `web-e2e-validate.ts` - 端到端手动运行验证脚本：启动全套服务 + 16 项 HTTP 断言（开发态验证用，可选运行）
+  - `tests/` - 手工/探索性测试脚本（非自动化单元测试）
+- `data/` - SQLite 运行时数据库（已 gitignore）
+- `logs/` - PM2 运行日志（已 gitignore）
 - `src/`
   - `cli/`
     - `index.ts` - CLI 入口：`--all` / `--serve-only` / `--daemon-only` / `--monitor-only` / `--once` / `--collect-now`，统一注册运行时工厂并启动 web
@@ -29,17 +43,16 @@
       - `style.css` - 白色主题样式（CSS 变量驱动，响应式布局）
       - `app.js` - 前端逻辑：hash 路由、5 个 Tab 渲染、SSE 实时推送、Chart.js 折线图、表单编辑
 - `tests/`
-  - `scheduler.test.ts` - 调度器核心逻辑测试（8 tests）
+  - `scheduler.test.ts` - 调度器核心逻辑测试（19 tests）：`getNextRunTime` + `getNextRollingRunTime` + `isValidTimeFormat` + `parseTimeToMinutes`
   - `executor.test.ts` - 命令行调用适配器测试（2 tests）
-  - `quota-parser.test.ts` - parseUserStatusToSnapshot 纯函数测试（14 tests）
-  - `process-detector.test.ts` - extractArg / scoreCandidate 纯函数测试（10 tests）
-  - `database.test.ts` - SQLite CRUD + 幂等性测试（6 tests）
-  - `daemon-executions.test.ts` - daemon_executions 表 CRUD 测试（6 tests）
-  - `config-save.test.ts` - validateConfig + saveConfig 校验/原子写测试（10 tests）
+  - `quota-parser.test.ts` - `parseUserStatusToSnapshot` 纯函数测试（14 tests，基于真实 fixture）
+  - `process-detector.test.ts` - `extractArg` / `scoreCandidate` 纯函数测试（10 tests）
+  - `database.test.ts` - SQLite CRUD + 幂等性测试（6 tests，基于真实 fixture 数据）
+  - `daemon-executions.test.ts` - `daemon_executions` 表 CRUD 测试（6 tests）
+  - `config-save.test.ts` - `validateConfig` + `saveConfig` + `loadConfig` 校验/原子写/文件 I/O 测试（18 tests）
   - `runtime.test.ts` - 运行时单例、启停、EventEmitter、环形 buffer 测试（11 tests）
-  - `connect-rpc.test.ts` - callGetUserStatus DI 测试 + 真实 fixture 集成测试（6 tests）
+  - `connect-rpc.test.ts` - `callGetUserStatus` DI 测试 + 真实 fixture 集成测试（6 tests）
   - `web-api.test.ts` - 端到端 Elysia 路由测试：REST API + SSE + 静态文件服务（17 tests）
-  - `web-e2e-validate.ts` - 端到端手动运行验证脚本：启动全套服务 + 16 项 HTTP 断言（开发态验证用，可选运行）
   - `fixtures/`
     - `get-user-status-response.json` - 真实 API 响应 fixture
     - `get-user-status-edge-cases.json` - 边界用例 fixture（耗尽/无 quota/null label）
