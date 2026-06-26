@@ -1380,12 +1380,11 @@ async function boot() {
     }
   }
 
-  // 导航点击：阻止 <a> 原生 hash 跳转，避免与 hashchange 冲突，同时关闭侧边栏
+  // 导航点击：阻止 <a> 原生 hash 跳转，避免与 hashchange 冲突
   $$(".nav-item").forEach((el) => {
     el.addEventListener("click", (e) => {
       e.preventDefault();
       setRoute(el.getAttribute("data-route") || "overview");
-      closeSidebar();
     });
   });
 
