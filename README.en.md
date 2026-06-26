@@ -1,116 +1,136 @@
 <p align="center">
-  <strong>English</strong> · <a href="README.md">中文</a>
+  <a href="README.md">中文</a> · <strong>English</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Bun-1.3%2B-black?logo=bun" alt="Bun">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-  <img src="https://img.shields.io/badge/tests-91_✔️-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-91_%E2%9C%94%EF%B8%8F-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/PRs-welcome-orange" alt="PRs Welcome">
 </p>
 
 <div align="center">
 
-# AGy Refresh ⚡ — Quota Monitor in Your System Tray
+# AGy Refresh ⚡
 
-**No browser tab needed. Your AI credits live in the Windows taskbar, like a battery indicator.**
+### Your AI Quota, Always Refilled. Zero Effort.
+
+**Automatically keeps your AGy / antigravity / Codeium credits alive — with a live dashboard in your browser and a battery-style indicator in your system tray.**
 
 </div>
 
 ---
 
-## 🪟 Windows System Tray — Battery-Style Quota Indicator
+## The Problem
 
-**The killer feature.** AGy 2.0 doesn't support plugins to show quota? We put the dashboard right in your taskbar notification area.
+AGy gives you generous AI credits that **reset on a schedule** — but only if your account stays active at the right moment. Miss the window, and you're stuck waiting. Manually sending prompts to keep the quota alive is tedious. You have better things to do.
 
-- **🎨 Icon changes color by usage** — Green (plenty) → Orange (warning) → Red (exhausted), just like a laptop battery
-- **🖱️ Hover for details** — Credits remaining, model count, scheduler status — no window to open
-- **📋 Right-click for actions** — Collect now, open dashboard, per-model usage breakdown
-- **🔔 Toast notifications** — Disconnected, reconnected — Windows bubble tips keep you informed
-- **⚙️ Toggle from Web Settings** — Enable/disable anytime
+## The Solution
 
-> Other tools make you open a settings page to see quota → **AGy Refresh brings quota to your fingertips.**
+AGy Refresh automates the boring stuff:
 
----
+- **Scheduled conversations** keep your reset window active every day
+- **Quota monitoring** tracks usage across all models in real-time
+- **Beautiful dashboard** shows status, history charts, and controls
+- **System tray icon** (Windows) gives you a quick glance at remaining credits — like a battery indicator for your AI
 
-## Why? 🤔
-
-AGy's quota reset works like this: **if a conversation is active at a specific time, a new usage cycle unlocks.**\
-But the window doesn't trigger itself — miss it and you wait for the next cycle.
-
-AGy Refresh watches it for you:
-
-- **🪟 System tray resident** — Glance at bottom-right to know today's quota
-- **⏰ Scheduled conversations at 08:00 daily** — Catch the reset window, ensure all-day availability
-- **🔄 Continuous scheduling** — Auto-executes every N minutes within the window, retries 3x on failure
-- **📊 Quota history tracking** — AGy only shows current usage; this tool collects & stores history
-- **💻 Web dashboard** — Status, scheduler, charts, settings, logs — all in the browser
-
-> In short: **Auto-refresh to prevent starvation, tray-resident, visually trackable.**
+> **TL;DR:** Set it and forget it. Your AI credits stay fresh, always.
 
 ---
 
-## Features ✨
+## Screenshots
+
+| Overview | Scheduler | Trends |
+|----------|-----------|--------|
+| Live quota, countdowns, quick actions | Start/stop, execution history | Per-model usage over 24h / 7d / 30d |
+
+| Settings | System Tray |
+|----------|-------------|
+| Hot-reload config, enable tray icon | Color-coded: green → orange → red |
+
+---
+
+## Why Star This Repo? ⭐
+
+| Feature | Why It Matters |
+|---------|---------------|
+| **🪟 System Tray Quota Indicator** | See your credits at a glance — green (plenty), orange (warning), red (exhausted). Hover for details, right-click for actions. No app to open. |
+| **🤖 Fully Automated** | Runs on schedule, retries on failure. You sleep, it works. |
+| **📊 Beautiful Dashboard** | 5-tab SPA: overview, scheduler, trends, settings, logs. All real-time via SSE. |
+| **🔥 Blazing Fast** | Built with Bun + Elysia — minimal memory, instant startup. |
+| **⚙️ Zero Restart Needed** | Change settings in the browser, changes apply instantly. |
+| **🌍 Bilingual** | English and Chinese, auto-detected from your browser. |
+| **🧪 Production Ready** | 91 tests covering scheduler, quota parser, database, config, web API, runtime. |
+| **📦 One Dependency** | Only `elysia` — everything else uses Bun built-ins (`bun:sqlite`, `bun:child_process`, etc.). |
+| **🔒 Privacy First** | Runs 100% locally. No cloud, no API keys, no telemetry. |
+| **🛠️ Extensible** | Clean architecture, TDD-first, easy to adapt for other tools. |
+
+---
+
+## Features
 
 | Capability | Description |
 |------------|-------------|
-| 🪟 **Windows System Tray** | Color-coded icon (green/orange/red), hover for details, right-click actions, toast alerts |
-| 🕐 **Scheduled Execution** | Configurable time window + interval, triggers precisely on the minute |
-| 🔁 **Auto Retry** | Retries up to 3 times (10s apart) on failure, never misses a window |
-| 📡 **Quota Collection** | Pulls usage from AGy Connect RPC API every N minutes, stores in SQLite |
-| 📈 **Historical Trends** | Chart.js line charts with 24h / 7d / 30d switching |
-| 🌐 **Web Dashboard** | Overview, scheduler controls, trend charts, config editor, live logs — 5 tabs |
-| ⚙️ **Hot-Reload Config** | Edit via Web UI, changes take effect immediately |
-| 🔔 **SSE Real-time Push** | Status changes, collection results, log stream — instant browser updates |
-| 🌍 **i18n** | English (default) / Chinese, auto-detects browser language, one-click switch |
-| 🧪 **91 Tests** | Unit + integration tests with full coverage |
+| 🪟 **System Tray** | Color-coded icon, hover tooltips, right-click menu, toast notifications |
+| 🕐 **Scheduler** | Configurable time window + frequency, precise minute-level triggers |
+| 🔁 **Auto Retry** | Up to 3 retries with 10s intervals — never misses a window |
+| 📡 **Quota Monitor** | Queries AGy Connect RPC API, stores in SQLite |
+| 📈 **Trend Charts** | Chart.js line graphs per model, 24h / 7d / 30d views |
+| 🌐 **Web Dashboard** | 5-tab SPA: Overview, Scheduler, Trends, Settings, Logs |
+| ⚙️ **Hot-Reload** | Edit config via UI, applies instantly |
+| 🔔 **SSE Push** | Real-time status, logs, and events streamed to browser |
+| 🌍 **i18n** | English / Chinese, auto-detect + one-click toggle |
+| 🧪 **91 Tests** | Full coverage: scheduler, executor, parser, database, runtime, web API |
 
 ---
 
-## Quick Start 🚀
+## Quick Start
 
 ### Prerequisites
 
-- [Bun](https://bun.sh/) installed
-- [AGy (antigravity)](https://codeium.com/) CLI (`agy`) in your PATH, language server running
+- [Bun](https://bun.sh/) (v1.3+)
+- [AGy (antigravity)](https://codeium.com/) CLI in your PATH with language server running
+- Windows (for system tray feature)
 
 ```bash
 # 1. Install dependencies
 bun install
 
-# 2. One-command start (scheduler + collector + web dashboard)
+# 2. Start everything (scheduler + monitor + web dashboard)
 bun run start --all
 
-# 3. Open Settings → Enable System Tray
+# 3. Open your browser
 open http://localhost:6789
+
+# 4. Go to Settings → Enable System Tray → Done
 ```
 
-### Run as a Background Service (Recommended)
+### Run as a Background Service
 
 ```bash
-# Use PM2 for process management
+# PM2 process management
 bun run pm2:start
 
-# Auto-start on boot (one-time setup)
+# Auto-start on boot (one-time)
 pm2 startup
 pm2 save
 ```
 
 ---
 
-## Dashboard Overview 🖥️
+## Dashboard Tour
 
-| Tab | Content |
-|-----|---------|
-| **Overview** | Next talk countdown, Prompt Credits, model quota table, quick actions |
-| **Scheduler** | Start/stop control, next run countdown, last execution result, history |
-| **Trends** | Usage rate line charts per model (24h / 7d / 30d) |
-| **Settings** | Visual `config.json` editor, **System Tray toggle**, save to hot-reload |
-| **Logs** | Real-time SSE log stream from daemon / monitor / web, filterable by source/level |
+| Tab | What You See |
+|-----|--------------|
+| **Overview** | Next talk countdown, Prompt/Flow Credits, latest model quotas, quick action buttons |
+| **Scheduler** | Start/stop daemon, next run countdown, last execution result, full history |
+| **Trends** | Per-model usage line charts grouped by pool (Gemini / Claude / GPT-OSS) |
+| **Settings** | Visual config editor, system tray toggle, share link detection |
+| **Logs** | Real-time daemon / monitor / web log stream, filterable by source and level |
 
 ---
 
-## Configuration ⚙️
+## Configuration
 
 ```json
 {
@@ -135,43 +155,43 @@ pm2 save
 }
 ```
 
-> All settings editable via Web UI, changes hot-reload instantly.
+All settings are editable through the Web UI — no file editing needed.
 
 ---
 
 ## CLI Modes
 
 ```bash
-bun run start --all              # Scheduler + collector + web (recommended)
+bun run start --all              # Scheduler + Monitor + Web + Tray (recommended)
 bun run start --serve-only       # Web dashboard only
-bun run start --daemon-only      # Scheduler + web only
-bun run start --monitor-only     # Collector + web only
+bun run start --daemon-only      # Scheduler + Web
+bun run start --monitor-only     # Monitor + Web
 bun run start --once             # Execute one conversation and exit
 bun run start --collect-now      # Collect quota once and exit
 ```
 
 ---
 
-## Architecture 🏗️
+## Architecture
 
 ```
 CLI --all
-  ├─ Daemon       → Schedule loop, execute command, retry on failure
-  ├─ Monitor      → Collect Connect RPC → SQLite
-  ├─ Web Server   → Elysia REST + SSE + static SPA
-  └─ Tray Icon    → PowerShell system tray (Windows)
+  ├─ Daemon       → Scheduled loop, executes commands, auto-retry
+  ├─ Monitor      → Periodic RPC calls → SQLite storage
+  ├─ Web Server   → Elysia REST API + SSE + Static SPA
+  └─ Tray Icon    → PowerShell notification area icon (Windows)
 
-Runtime (singleton)
-  ├─ State: daemon / monitor status
-  ├─ EventEmitter → SSE → real-time browser updates
-  └─ Ring buffer log (500 entries)
+Runtime (Singleton)
+  ├─ State Management: daemon / monitor status
+  ├─ EventEmitter → SSE → Real-time browser updates
+  └─ Ring Buffer: 500 log entries, auto-cleanup
 ```
 
 **Tech Stack:** [Bun](https://bun.sh/) · [Elysia](https://elysiajs.com/) · SQLite · Chart.js · Vanilla JS · PowerShell
 
 ---
 
-## Tests 🧪
+## Tests
 
 ```bash
 bun test
@@ -182,17 +202,36 @@ bun test
 | Scheduler | 11 | Time boundaries, exact triggers, cross-day |
 | Executor | 2 | Command execution adapter |
 | Quota Parser | 14 | AGy quota JSON parsing |
-| Process Detector | 10 | Process detection parameter extraction |
+| Process Detector | 10 | Parameter extraction & scoring |
 | Database | 6 | SQLite CRUD + idempotence |
-| Daemon Executions | 6 | Execution history CRUD |
-| Config Save | 10 | Config validation + atomic write |
+| Daemon Executions | 6 | Execution history persistence |
+| Config Save | 10 | Validation + atomic writes |
 | Runtime | 11 | Singleton + EventEmitter + Buffer |
 | Connect RPC | 6 | RPC client + integration |
 | Web API | 17 | REST routes + SSE + static files |
-| **Total** | **91** | **100% green** |
+| **Total** | **91** | **All green** |
 
 ---
 
-## License 📄
+## Who Is This For?
 
-MIT
+- **AGy / antigravity / Codeium users** who want to maximize their free tier credits
+- **Automation enthusiasts** who love "set it and forget it" tools
+- **Self-hosted lovers** who prefer local-first, privacy-respecting software
+- **Bun / Elysia fans** who appreciate minimal dependencies and clean architecture
+
+---
+
+## License
+
+MIT — free to use, modify, and distribute.
+
+---
+
+<div align="center">
+
+**Found this useful?** Give it a ⭐ and share it with others who use AGy!
+
+*Built with ❤️ by [zhoul1](https://github.com/zhoul1)*
+
+</div>
