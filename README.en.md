@@ -17,6 +17,20 @@
 
 **Automatically keeps your AGy / antigravity / Codeium credits alive — with a live dashboard in your browser and a battery-style indicator in your system tray.**
 
+---
+
+## 🚨 AGy 2.0 Has No Plugin Support? We Fill That Gap.
+
+AGy 2.0 doesn't support IDE plugins to check your quota — **AGy Refresh is the replacement**.
+
+- **📊 Full Dashboard** — Not hidden in a corner like an IDE plugin, but a dedicated 5-tab control center
+- **📈 Historical Trends** — IDE plugins only show current usage; here you get 24h / 7d / 30d trend curves
+- **🪟 System Tray Resident** — More convenient than an IDE plugin, check credits without opening the editor
+- **🔔 Real-time Alerts** — Credit exhausted, disconnected — pop-up notifications instantly
+- **🌐 Access Anywhere** — Any device on your LAN can open the dashboard, not just inside the IDE
+
+> **It does everything an IDE plugin does — and everything an IDE plugin can't.**
+
 </div>
 
 ---
