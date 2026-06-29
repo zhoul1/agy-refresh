@@ -155,8 +155,16 @@ function BuildTooltip($Status, $Quota) {
                 $poolMap[$pool] = @{ remaining = 0; count = 0 }
                 $poolResetMap[$pool] = $null
             }
-            if ($mod.remainingPct -ne $null) {
-                $poolMap[$pool].remaining = [math]::Round($mod.remainingPct * 100, 1)
+            if ($mod.remainingPct -ne $null -and $mod.usedPct -ne $null) {
+                $sum = $mod.remainingPct + $mod.usedPct
+                $rem = $mod.remainingPct
+                if ($sum -gt 2) {
+                    $rem = $rem / 100
+                }
+                $remPct = [math]::Round($rem * 100, 1)
+                if ($poolMap[$pool].count -eq 0 -or $remPct -lt $poolMap[$pool].remaining) {
+                    $poolMap[$pool].remaining = $remPct
+                }
             }
             $poolMap[$pool].count++
             if ($mod.resetTime -and ($poolResetMap[$pool] -eq $null -or $mod.resetTime -lt $poolResetMap[$pool])) {
