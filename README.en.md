@@ -15,86 +15,81 @@
 
 ### Your AI Quota, Always Refilled. Zero Effort.
 
-**Automatically keeps your AGy / antigravity / Codeium credits alive — with a live dashboard in your browser and a battery-style indicator in your system tray.**
-
----
-
-## 🚨 Antigravity 2.0 Has No Plugin Support? We Fill That Gap.
-
-Antigravity 2.0 doesn't support IDE plugins to check your quota — **AGy Refresh is the replacement**.
-
-- **📊 Full Dashboard** — Not hidden in a corner like an IDE plugin, but a dedicated 5-tab control center
-- **📈 Historical Trends** — IDE plugins only show current usage; here you get 24h / 7d / 30d trend curves
-- **🪟 System Tray Resident** — More convenient than an IDE plugin, check credits without opening the editor
-- **🔔 Real-time Alerts** — Credit exhausted, disconnected — pop-up notifications instantly
-- **🌐 Access Anywhere** — Any device on your LAN can open the dashboard, not just inside the IDE
-
-> **It does everything an IDE plugin does — and everything an IDE plugin can't.**
+**Automatically keeps your AGy / antigravity / Codeium credits alive — color-coded system tray icon at a glance, mobile remote dashboard via VPN.**
 
 </div>
 
 ---
 
-## The Problem
+## Three Killer Features
 
-AGy gives you generous AI credits that **reset on a schedule** — but only if your account stays active at the right moment. Miss the window, and you're stuck waiting. Manually sending prompts to keep the quota alive is tedious. You have better things to do.
+### 1. 🪟 System Tray Icon — More Intuitive Than a Battery Indicator
 
-## The Solution
+A常驻 icon in your notification area with colors that change by usage:
 
-AGy Refresh automates the boring stuff:
+- 🟢 **Green** — Plenty of credits, go wild
+- 🟠 **Orange** — Half used, pace yourself
+- 🔴 **Red** — Running low, next cycle coming soon
+- ❌ **Grey Cross** — Connection lost
 
-- **Scheduled conversations** keep your reset window active every day
-- **Quota monitoring** tracks usage across all models in real-time
-- **Beautiful dashboard** shows status, history charts, and controls
-- **System tray icon** (Windows) gives you a quick glance at remaining credits — like a battery indicator for your AI
+**Hover for details**: Usage % per pool (Gemini / Claude / GPT) + next reset time, all on one line.
 
-> **TL;DR:** Set it and forget it. Your AI credits stay fresh, always.
+**Right-click menu**: Collect now, open dashboard, view per-model breakdown — zero clicks into any app.
 
----
+### 2. 📱 Mobile Remote Access — Check Usage From Anywhere
 
-## Screenshots
+The Web dashboard listens on `0.0.0.0`, accessible by any device on your LAN. Paired with Tailscale / ZeroTier, **check your AI quota from your phone while on the go**:
 
-| Overview | Scheduler | Trends |
-|----------|-----------|--------|
-| Live quota, countdowns, quick actions | Start/stop, execution history | Per-model usage over 24h / 7d / 30d |
+- See your home PC's AI credits from the office
+- Check model usage during commute
+- Share one dashboard across multiple devices
 
-| Settings | System Tray |
-|----------|-------------|
-| Hot-reload config, enable tray icon | Color-coded: green → orange → red |
+> **Others use IDE plugins → You use browser + phone, full platform coverage.**
+
+### 3. 🤖 Fully Automated Quota Refill — Works While You Sleep
+
+AGy's quota reset mechanic: **send a conversation at the right time, unlock a fresh cycle**.
+
+AGy Refresh handles it:
+- Sends conversation requests automatically every day (08:00–23:30)
+- Retries up to 3 times on failure — never misses a window
+- Collects quota data every 10 minutes, stores in SQLite history
+
+> **Set it and forget it. Your AI credits stay fresh, always.**
 
 ---
 
 ## Why Star This Repo? ⭐
 
-| Feature | Why It Matters |
-|---------|---------------|
-| **🪟 System Tray Quota Indicator** | See your credits at a glance — green (plenty), orange (warning), red (exhausted). Hover for details, right-click for actions. No app to open. |
-| **🤖 Fully Automated** | Runs on schedule, retries on failure. You sleep, it works. |
-| **📊 Beautiful Dashboard** | 5-tab SPA: overview, scheduler, trends, settings, logs. All real-time via SSE. |
-| **🔥 Blazing Fast** | Built with Bun + Elysia — minimal memory, instant startup. |
-| **⚙️ Zero Restart Needed** | Change settings in the browser, changes apply instantly. |
-| **🌍 Bilingual** | English and Chinese, auto-detected from your browser. |
-| **🧪 Production Ready** | 91 tests covering scheduler, quota parser, database, config, web API, runtime. |
-| **📦 One Dependency** | Only `elysia` — everything else uses Bun built-ins (`bun:sqlite`, `bun:child_process`, etc.). |
-| **🔒 Privacy First** | Runs 100% locally. No cloud, no API keys, no telemetry. |
-| **🛠️ Extensible** | Clean architecture, TDD-first, easy to adapt for other tools. |
+| Feature | Others | AGy Refresh |
+|---------|--------|-------------|
+| Quota View | IDE plugin, hidden away | 🪟 System tray, one glance |
+| Usage Trends | Current only, no history | 📈 24h/7d/30d line charts |
+| Remote Access | ❌ Impossible | 📱 Phone browser, anywhere |
+| Quota Refill | Manual messages | 🤖 Fully automated, scheduled |
+| Multi-Model Groups | ❌ | ✅ Gemini / Claude / GPT pools |
+| Notifications | ❌ | 🔔 Color changes + right-click menu |
+| Privacy | May use cloud | 🔒 100% local, no data leaves your PC |
+
+> **It does everything an IDE plugin does — and everything an IDE plugin can't.**
 
 ---
 
-## Features
+## Feature Matrix
 
 | Capability | Description |
 |------------|-------------|
-| 🪟 **System Tray** | Color-coded icon, hover tooltips, right-click menu, toast notifications |
+| 🪟 **System Tray** | Color-coded icon, hover details, right-click menu, per-pool usage + reset time |
+| 📱 **Remote Dashboard** | LAN access, phone remote viewing with Tailscale / ZeroTier |
 | 🕐 **Scheduler** | Configurable time window + frequency, precise minute-level triggers |
 | 🔁 **Auto Retry** | Up to 3 retries with 10s intervals — never misses a window |
 | 📡 **Quota Monitor** | Queries AGy Connect RPC API, stores in SQLite |
-| 📈 **Trend Charts** | Chart.js line graphs per model, 24h / 7d / 30d views |
+| 📈 **Trend Charts** | Chart.js line graphs per model pool, 24h / 7d / 30d views |
 | 🌐 **Web Dashboard** | 5-tab SPA: Overview, Scheduler, Trends, Settings, Logs |
-| ⚙️ **Hot-Reload** | Edit config via UI, applies instantly |
+| ⚙️ **Hot-Reload** | Edit config via UI, changes apply instantly |
 | 🔔 **SSE Push** | Real-time status, logs, and events streamed to browser |
 | 🌍 **i18n** | English / Chinese, auto-detect + one-click toggle |
-| 🧪 **91 Tests** | Full coverage: scheduler, executor, parser, database, runtime, web API |
+| 🧪 **91 Tests** | Production-grade quality, core logic covered |
 
 ---
 
@@ -113,10 +108,19 @@ bun install
 # 2. Start everything (scheduler + monitor + web dashboard)
 bun run start --all
 
-# 3. Open your browser
-open http://localhost:6789
+# 3. Open browser to http://localhost:6789
+#    Settings → Enable System Tray → Done
+```
 
-# 4. Go to Settings → Enable System Tray → Done
+### Remote Viewing on Phone
+
+```bash
+# Option 1: LAN access
+# Same WiFi network, phone browser: http://<PC_IP>:6789
+
+# Option 2: Tailscale (recommended)
+# Install Tailscale on PC and phone
+# Phone browser: https://<PC_Tailscale_IP>:6789
 ```
 
 ### Run as a Background Service
@@ -169,7 +173,7 @@ pm2 save
 }
 ```
 
-All settings are editable through the Web UI — no file editing needed.
+All settings editable through the Web UI — no file editing needed.
 
 ---
 
@@ -231,7 +235,8 @@ bun test
 
 - **AGy / antigravity / Codeium users** who want to maximize their free tier credits
 - **Automation enthusiasts** who love "set it and forget it" tools
-- **Self-hosted lovers** who prefer local-first, privacy-respecting software
+- **Remote workers** who want to check their home PC's AI usage from phone
+- **Privacy advocates** who prefer 100% local, no-cloud software
 - **Bun / Elysia fans** who appreciate minimal dependencies and clean architecture
 
 ---
