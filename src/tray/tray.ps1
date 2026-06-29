@@ -1,9 +1,9 @@
 param($ApiUrl = "http://localhost:6789")
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms | Out-Null
+Add-Type -AssemblyName System.Drawing | Out-Null
 
-Add-Type @"
+Add-Type -ReferencedAssemblies "System.Drawing", "System.Windows.Forms" @"
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
@@ -64,59 +64,70 @@ SetTrayIcon ([System.Drawing.Color]::Gray) $false
 function BuildMenu($Status, $Quota) {
     $m = New-Object System.Windows.Forms.ContextMenuStrip
 
-    $h = $m.Items.Add("Open Dashboard / 打开面板")
+    $null = $m.Items.Add("Open Dashboard / 打开面板")
+    $h = $m.Items[0]
     $h.Add_Click({ Start-Process $ApiUrl })
 
-    $h = $m.Items.Add("Refresh Now / 刷新数据")
+    $null = $m.Items.Add("Refresh Now / 刷新数据")
+    $h = $m.Items[1]
     $h.Add_Click({ RefreshAll })
 
-    $h = $m.Items.Add("Collect Now / 立刻采集")
+    $null = $m.Items.Add("Collect Now / 立刻采集")
+    $h = $m.Items[2]
     $h.Add_Click({
         try { Invoke-WebRequest -Uri "$ApiUrl/api/monitor/collect-now" -Method POST -UseBasicParsing -TimeoutSec 15 | Out-Null } catch {}
     })
 
-    $m.Items.Add("-")
+    $null =     $m.Items.Add("-")
 
     if ($Quota -and $Quota.credits) {
         $used = $Quota.credits.used
         $limit = $Quota.credits.limit
-        $pct = if ($limit -gt 0) { [math]::Round($used / $limit * 100, 1) } else { 0 }
         $remain = if ($limit -gt 0) { $limit - $used } else { 0 }
-        $h = $m.Items.Add("Credits: $used / $limit — $remain left")
-        $h.Enabled = $false
+        $null = $m.Items.Add("Credits: $used / $limit — $remain left")
+        $m.Items[-1].Enabled = $false
     }
 
     if ($Quota -and $Quota.models -and $Quota.models.Count -gt 0) {
-        $m.Items.Add("-")
-        $exhaustedCount = 0
-        for ($i = 0; $i -lt [math]::Min($Quota.models.Count, 10); $i++) {
-            $mod = $Quota.models[$i]
+        $null = $m.Items.Add("-")
+        $poolMap = @{}
+        foreach ($mod in $Quota.models) {
+            $pool = "Other"
+            $lower = (($mod.id + " " + ($mod.display)) -replace "MODEL_PLACEHOLDER_", "").ToLower()
+            if ($lower -match "gemini") { $pool = "Gemini" }
+            elseif ($lower -match "claude") { $pool = "Claude" }
+            elseif ($lower -match "gpt|oss") { $pool = "GPT" }
+            
+            if (-not $poolMap.ContainsKey($pool)) { $poolMap[$pool] = @{} }
             $name = if ($mod.display -and $mod.display.Length -gt 0) { $mod.display } else { $mod.id }
-            $pct = if ($mod.usedPct -ne $null) { "$($mod.usedPct)%" } else { "?" }
+            $pct = if ($mod.usedPct -ne $null) { "$([math]::Round($mod.usedPct * 100, 1))%" } else { "?" }
             $sym = if ($mod.exhausted) { " X" } else { "" }
-            if ($mod.exhausted) { $exhaustedCount++ }
-            $h = $m.Items.Add("$name — $pct$sym")
-            $h.Enabled = $false
+            $poolMap[$pool]["$name"] = "$pct$sym"
         }
-        if ($Quota.models.Count -gt 10) {
-            $h = $m.Items.Add("... +$($Quota.models.Count - 10) more / 更多")
-            $h.Enabled = $false
+        
+        foreach ($pair in $poolMap.GetEnumerator()) {
+            $null = $m.Items.Add("$($pair.Key) Pool:")
+            $m.Items[-1].Enabled = $false
+            foreach ($modelName in $pair.Value.Keys) {
+                $null = $m.Items.Add("  $modelName — $($pair.Value[$modelName])")
+                $m.Items[-1].Enabled = $false
+            }
         }
     }
 
-    $m.Items.Add("-")
+    $null = $m.Items.Add("-")
     if ($Status) {
         $ds = if ($Status.daemon.running) { "ON" } else { "OFF" }
         $ms = if ($Status.monitor.running) { "ON" } else { "OFF" }
-        $h = $m.Items.Add("Scheduler: $ds | Monitor: $ms")
-        $h.Enabled = $false
+        $null = $m.Items.Add("Scheduler: $ds | Monitor: $ms")
+        $m.Items[-1].Enabled = $false
         if ($Status.quota.email) {
-            $h = $m.Items.Add("Account: $($Status.quota.email)")
-            $h.Enabled = $false
+            $null = $m.Items.Add("Account: $($Status.quota.email)")
+            $m.Items[-1].Enabled = $false
         }
     }
 
-    $m.Items.Add("-")
+    $null = $m.Items.Add("-")
     $h = $m.Items.Add("Exit / 退出")
     $h.Add_Click({
         $tray.Visible = $false
@@ -129,26 +140,41 @@ function BuildMenu($Status, $Quota) {
 }
 
 function BuildTooltip($Status, $Quota) {
-    $parts = @()
-    if ($Quota -and $Quota.credits -and $Quota.credits.limit -gt 0) {
+    $parts = @("AGy Refresh")
+    
+    if ($Quota -and $Quota.credits) {
         $used = $Quota.credits.used
         $limit = $Quota.credits.limit
-        $pct = [math]::Round($used / $limit * 100, 1)
-        $remain = $limit - $used
-        $parts += "$pct% used ($remain left)"
+        $parts += "Credits: $used/$limit"
     }
+    
     if ($Quota -and $Quota.models -and $Quota.models.Count -gt 0) {
-        $exhausted = @($Quota.models | Where-Object { $_.exhausted })
-        $parts += "$($Quota.models.Count) models"
-        if ($exhausted.Count -gt 0) { $parts += "$($exhausted.Count) exhausted" }
+        $poolMap = @{}
+        foreach ($mod in $Quota.models) {
+            $pool = "Other"
+            $lower = (($mod.id + " " + ($mod.display)) -replace "MODEL_PLACEHOLDER_", "").ToLower()
+            if ($lower -match "gemini") { $pool = "Gemini" }
+            elseif ($lower -match "claude") { $pool = "Claude" }
+            elseif ($lower -match "gpt|oss") { $pool = "GPT" }
+            
+            if (-not $poolMap.ContainsKey($pool)) {
+                $poolMap[$pool] = @{ used = 0; limit = 0; count = 0 }
+            }
+            $poolMap[$pool].count++
+            if ($mod.usedPct -ne $null -and $mod.remainingPct -ne $null) {
+                $poolMap[$pool].used = [math]::Round($mod.usedPct * 100, 1)
+                $poolMap[$pool].limit = [math]::Round(($mod.usedPct + $mod.remainingPct) * 100, 1)
+            }
+        }
+        
+        foreach ($pair in $poolMap.GetEnumerator()) {
+            $pct = if ($pair.Value.limit -gt 0) { [math]::Round($pair.Value.used / $pair.Value.limit * 100, 1) } else { "?" }
+            $parts += "$($pair.Key): ${pct}%"
+        }
     }
-    if ($Status) {
-        $ds = if ($Status.daemon.running) { "ON" } else { "OFF" }
-        $ms = if ($Status.monitor.running) { "ON" } else { "OFF" }
-        $parts += "D:$ds M:$ms"
-    }
-    if ($parts.Count -eq 0) { return "AGy Refresh — No data" }
-    return "AGy Refresh`n$($parts -join ' | ')"
+    
+    if ($parts.Count -eq 1) { $parts += "No data" }
+    return ($parts -join "`n")
 }
 
 function GetUsageColor($usedPct, $hasExhausted) {
@@ -196,16 +222,10 @@ $timer.Interval = 20000
 $timer.Add_Tick({
     try {
         RefreshAll
-        if (-not $lastOk) {
-            $tray.ShowBalloonTip(3000, "AGy Refresh", "Connected / 已连接", [System.Windows.Forms.ToolTipIcon]::Info)
-        }
         $lastOk = $true
     } catch {
         $tray.Text = "AGy Refresh — Offline"
         SetTrayIcon ([System.Drawing.Color]::Gray) $false
-        if ($lastOk) {
-            $tray.ShowBalloonTip(3000, "AGy Refresh", "Connection lost / 连接断开", [System.Windows.Forms.ToolTipIcon]::Warning)
-        }
         $lastOk = $false
     }
 })
@@ -213,7 +233,5 @@ $timer.Start()
 
 Start-Sleep -Seconds 3
 RefreshAll
-
-$tray.ShowBalloonTip(3000, "AGy Refresh", "Running in system tray / 正在系统托盘运行", [System.Windows.Forms.ToolTipIcon]::Info)
 
 [System.Windows.Forms.Application]::Run()
