@@ -152,13 +152,13 @@ function BuildTooltip($Status, $Quota) {
             elseif ($lower -match "gpt|oss") { $pool = "GPT" }
             
             if (-not $poolMap.ContainsKey($pool)) {
-                $poolMap[$pool] = @{ used = 0; limit = 0 }
+                $poolMap[$pool] = @{ remaining = 0; count = 0 }
                 $poolResetMap[$pool] = $null
             }
-            if ($mod.usedPct -ne $null -and $mod.remainingPct -ne $null) {
-                $poolMap[$pool].used = [math]::Round($mod.usedPct * 100, 1)
-                $poolMap[$pool].limit = [math]::Round(($mod.usedPct + $mod.remainingPct) * 100, 1)
+            if ($mod.remainingPct -ne $null) {
+                $poolMap[$pool].remaining = [math]::Round($mod.remainingPct * 100, 1)
             }
+            $poolMap[$pool].count++
             if ($mod.resetTime -and ($poolResetMap[$pool] -eq $null -or $mod.resetTime -lt $poolResetMap[$pool])) {
                 $poolResetMap[$pool] = $mod.resetTime
             }
@@ -168,13 +168,13 @@ function BuildTooltip($Status, $Quota) {
     $parts = @()
     foreach ($pool in @("Gemini", "Claude", "GPT")) {
         if ($poolMap.ContainsKey($pool)) {
-            $pct = if ($poolMap[$pool].limit -gt 0) { [math]::Round($poolMap[$pool].used / $poolMap[$pool].limit * 100, 1) } else { "?" }
+            $rem = $poolMap[$pool].remaining
             $resetStr = ""
             if ($poolResetMap[$pool]) {
                 $resetTime = [DateTimeOffset]::Parse($poolResetMap[$pool]).LocalDateTime
                 $resetStr = " $($resetTime.ToString('HH:mm'))"
             }
-            $parts += "$pool: ${pct}%$resetStr"
+            $parts += "${pool}: ${rem}% left${resetStr}"
         }
     }
     
