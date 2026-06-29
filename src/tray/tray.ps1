@@ -150,6 +150,7 @@ function BuildTooltip($Status, $Quota) {
     
     if ($Quota -and $Quota.models -and $Quota.models.Count -gt 0) {
         $poolMap = @{}
+        $poolResetMap = @{}
         foreach ($mod in $Quota.models) {
             $pool = "Other"
             $lower = (($mod.id + " " + ($mod.display)) -replace "MODEL_PLACEHOLDER_", "").ToLower()
@@ -159,17 +160,26 @@ function BuildTooltip($Status, $Quota) {
             
             if (-not $poolMap.ContainsKey($pool)) {
                 $poolMap[$pool] = @{ used = 0; limit = 0; count = 0 }
+                $poolResetMap[$pool] = $null
             }
             $poolMap[$pool].count++
             if ($mod.usedPct -ne $null -and $mod.remainingPct -ne $null) {
                 $poolMap[$pool].used = [math]::Round($mod.usedPct * 100, 1)
                 $poolMap[$pool].limit = [math]::Round(($mod.usedPct + $mod.remainingPct) * 100, 1)
             }
+            if ($mod.resetTime -and ($poolResetMap[$pool] -eq $null -or $mod.resetTime -lt $poolResetMap[$pool])) {
+                $poolResetMap[$pool] = $mod.resetTime
+            }
         }
         
         foreach ($pair in $poolMap.GetEnumerator()) {
             $pct = if ($pair.Value.limit -gt 0) { [math]::Round($pair.Value.used / $pair.Value.limit * 100, 1) } else { "?" }
-            $parts += "$($pair.Key): ${pct}%"
+            $resetStr = ""
+            if ($poolResetMap[$pair.Key]) {
+                $resetTime = [DateTimeOffset]::Parse($poolResetMap[$pair.Key]).LocalDateTime
+                $resetStr = " (重置: $($resetTime.ToString('MM/dd HH:mm')))"
+            }
+            $parts += "$($pair.Key): ${pct}%$resetStr"
         }
     }
     
