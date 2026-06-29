@@ -140,17 +140,10 @@ function BuildMenu($Status, $Quota) {
 }
 
 function BuildTooltip($Status, $Quota) {
-    $parts = @("AGy Refresh")
-    
-    if ($Quota -and $Quota.credits) {
-        $used = $Quota.credits.used
-        $limit = $Quota.credits.limit
-        $parts += "Credits: $used/$limit"
-    }
+    $poolMap = @{}
+    $poolResetMap = @{}
     
     if ($Quota -and $Quota.models -and $Quota.models.Count -gt 0) {
-        $poolMap = @{}
-        $poolResetMap = @{}
         foreach ($mod in $Quota.models) {
             $pool = "Other"
             $lower = (($mod.id + " " + ($mod.display)) -replace "MODEL_PLACEHOLDER_", "").ToLower()
@@ -159,10 +152,9 @@ function BuildTooltip($Status, $Quota) {
             elseif ($lower -match "gpt|oss") { $pool = "GPT" }
             
             if (-not $poolMap.ContainsKey($pool)) {
-                $poolMap[$pool] = @{ used = 0; limit = 0; count = 0 }
+                $poolMap[$pool] = @{ used = 0; limit = 0 }
                 $poolResetMap[$pool] = $null
             }
-            $poolMap[$pool].count++
             if ($mod.usedPct -ne $null -and $mod.remainingPct -ne $null) {
                 $poolMap[$pool].used = [math]::Round($mod.usedPct * 100, 1)
                 $poolMap[$pool].limit = [math]::Round(($mod.usedPct + $mod.remainingPct) * 100, 1)
@@ -171,20 +163,29 @@ function BuildTooltip($Status, $Quota) {
                 $poolResetMap[$pool] = $mod.resetTime
             }
         }
-        
-        foreach ($pair in $poolMap.GetEnumerator()) {
-            $pct = if ($pair.Value.limit -gt 0) { [math]::Round($pair.Value.used / $pair.Value.limit * 100, 1) } else { "?" }
+    }
+    
+    $parts = @()
+    foreach ($pool in @("Gemini", "Claude", "GPT")) {
+        if ($poolMap.ContainsKey($pool)) {
+            $pct = if ($poolMap[$pool].limit -gt 0) { [math]::Round($poolMap[$pool].used / $poolMap[$pool].limit * 100, 1) } else { "?" }
             $resetStr = ""
-            if ($poolResetMap[$pair.Key]) {
-                $resetTime = [DateTimeOffset]::Parse($poolResetMap[$pair.Key]).LocalDateTime
-                $resetStr = " (重置: $($resetTime.ToString('MM/dd HH:mm')))"
+            if ($poolResetMap[$pool]) {
+                $resetTime = [DateTimeOffset]::Parse($poolResetMap[$pool]).LocalDateTime
+                $resetStr = " $($resetTime.ToString('HH:mm'))"
             }
-            $parts += "$($pair.Key): ${pct}%$resetStr"
+            $parts += "$pool: ${pct}%$resetStr"
         }
     }
     
-    if ($parts.Count -eq 1) { $parts += "No data" }
-    return ($parts -join "`n")
+    if ($parts.Count -eq 0) { $parts += "No data" }
+    $full = ($parts -join "`n")
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($full)
+    if ($bytes.Length -gt 63) {
+        $truncated = [System.Text.Encoding]::UTF8.GetString($bytes, 0, 60)
+        $full = $truncated + "…"
+    }
+    return $full
 }
 
 function GetUsageColor($usedPct, $hasExhausted) {
