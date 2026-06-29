@@ -19,9 +19,9 @@
 
 ---
 
-## 🚨 AGy 2.0 Has No Plugin Support? We Fill That Gap.
+## 🚨 Antigravity 2.0 Has No Plugin Support? We Fill That Gap.
 
-AGy 2.0 doesn't support IDE plugins to check your quota — **AGy Refresh is the replacement**.
+Antigravity 2.0 doesn't support IDE plugins to check your quota — **AGy Refresh is the replacement**.
 
 - **📊 Full Dashboard** — Not hidden in a corner like an IDE plugin, but a dedicated 5-tab control center
 - **📈 Historical Trends** — IDE plugins only show current usage; here you get 24h / 7d / 30d trend curves
