@@ -174,7 +174,7 @@ function BuildTooltip($Status, $Quota) {
     }
     
     $parts = @()
-    foreach ($pool in @("Gemini", "Claude", "GPT")) {
+    foreach ($pool in @("Gemini", "Claude")) {
         if ($poolMap.ContainsKey($pool)) {
             $rem = $poolMap[$pool].remaining
             $resetStr = ""
