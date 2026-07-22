@@ -46,7 +46,8 @@ export type RuntimeEventName =
   | "monitor:collected"
   | "monitor:failed"
   | "log"
-  | "status";
+  | "status"
+  | "imagegen:reported";
 
 export type RuntimeEventPayloads = {
   "daemon:start": void;
@@ -60,6 +61,7 @@ export type RuntimeEventPayloads = {
   "monitor:failed": { error: string };
   "log": LogEntry;
   "status": void;
+  "imagegen:reported": void;
 };
 
 class TypedEmitter {
@@ -198,6 +200,11 @@ export function subscribe(listener: () => void): () => void {
 }
 
 export function notifyStatusChange(): void {
+  emitter.emit("status", undefined);
+}
+
+export function recordImageGenReported(): void {
+  emitter.emit("imagegen:reported", undefined);
   emitter.emit("status", undefined);
 }
 

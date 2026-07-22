@@ -19,10 +19,22 @@ export function startTray(): boolean {
     "-ExecutionPolicy", "Bypass",
     "-File", TRAY_SCRIPT,
     "-ApiUrl", trayApiUrl,
-  ], { windowsHide: true, stdio: "ignore" });
+  ], { windowsHide: false, stdio: ["ignore", "pipe", "pipe"] });
 
-  trayProcess.on("exit", () => { trayProcess = null; });
-  trayProcess.on("error", () => { trayProcess = null; });
+  trayProcess.stdout?.on("data", (data) => {
+    console.log(`[TRAY] ${data.toString().trim()}`);
+  });
+  trayProcess.stderr?.on("data", (data) => {
+    console.error(`[TRAY ERR] ${data.toString().trim()}`);
+  });
+  trayProcess.on("exit", (code) => {
+    console.log(`[TRAY] exited with code ${code}`);
+    trayProcess = null;
+  });
+  trayProcess.on("error", (err) => {
+    console.error(`[TRAY] error: ${err.message}`);
+    trayProcess = null;
+  });
   return true;
 }
 

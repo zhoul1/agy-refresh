@@ -24,11 +24,22 @@ export interface WebConfig {
   trayEnabled?: boolean;
 }
 
+export interface ImageGenConfig {
+  enabled: boolean;
+  endpoint: string;
+  method: string;
+  model: string;
+  prompt: string;
+  authToken: string;
+  timeoutMs: number;
+}
+
 export interface Config {
   scheduler: SchedulerConfig;
   command: CommandConfig;
   monitor: MonitorConfig;
   web: WebConfig;
+  imageGen: ImageGenConfig;
 }
 
 export const DEFAULT_CONFIG: Config = {
@@ -50,6 +61,15 @@ export const DEFAULT_CONFIG: Config = {
     port: 6789,
     host: "0.0.0.0",
     trayEnabled: true,
+  },
+  imageGen: {
+    enabled: true,
+    endpoint: "",
+    method: "GenerateImage",
+    model: "gemini-3.1-flash-image",
+    prompt: "a tiny red square on white background",
+    authToken: "",
+    timeoutMs: 30000,
   },
 };
 
@@ -127,6 +147,22 @@ export function loadConfig(configPath?: string): Config {
       trayEnabled: typeof parsed.web?.trayEnabled === "boolean" ? parsed.web.trayEnabled : DEFAULT_CONFIG.web.trayEnabled,
     };
 
+    const imageGen: ImageGenConfig = {
+      enabled: typeof parsed.imageGen?.enabled === "boolean" ? parsed.imageGen.enabled : DEFAULT_CONFIG.imageGen.enabled,
+      endpoint: typeof parsed.imageGen?.endpoint === "string" ? parsed.imageGen.endpoint.trim() : DEFAULT_CONFIG.imageGen.endpoint,
+      method: typeof parsed.imageGen?.method === "string" && parsed.imageGen.method.trim().length > 0
+        ? parsed.imageGen.method
+        : DEFAULT_CONFIG.imageGen.method,
+      model: typeof parsed.imageGen?.model === "string" && parsed.imageGen.model.trim().length > 0
+        ? parsed.imageGen.model
+        : DEFAULT_CONFIG.imageGen.model,
+      prompt: typeof parsed.imageGen?.prompt === "string" ? parsed.imageGen.prompt : DEFAULT_CONFIG.imageGen.prompt,
+      authToken: typeof parsed.imageGen?.authToken === "string" ? parsed.imageGen.authToken : DEFAULT_CONFIG.imageGen.authToken,
+      timeoutMs: typeof parsed.imageGen?.timeoutMs === "number" && parsed.imageGen.timeoutMs > 0
+        ? parsed.imageGen.timeoutMs
+        : DEFAULT_CONFIG.imageGen.timeoutMs,
+    };
+
     // 检查 startTime 是否早于 endTime
     const startMins = parseTimeToMinutes(scheduler.startTime);
     const endMins = parseTimeToMinutes(scheduler.endTime);
@@ -135,7 +171,7 @@ export function loadConfig(configPath?: string): Config {
       return { ...DEFAULT_CONFIG };
     }
 
-    return { scheduler, command, monitor, web };
+    return { scheduler, command, monitor, web, imageGen };
   } catch (error) {
     console.error(`[Config] 解析配置文件失败，将使用默认配置。错误信息:`, error);
     return { ...DEFAULT_CONFIG };
@@ -155,6 +191,7 @@ export function validateConfig(cfg: Partial<Config>): Config {
     command: { ...DEFAULT_CONFIG.command, ...(cfg.command || {}) },
     monitor: { ...DEFAULT_CONFIG.monitor, ...(cfg.monitor || {}) },
     web: { ...DEFAULT_CONFIG.web, ...(cfg.web || {}) },
+    imageGen: { ...DEFAULT_CONFIG.imageGen, ...(cfg.imageGen || {}) },
   };
 
   if (!isValidTimeFormat(merged.scheduler.startTime)) {
@@ -192,6 +229,19 @@ export function validateConfig(cfg: Partial<Config>): Config {
   }
   if (typeof merged.web.host !== "string" || merged.web.host.trim().length === 0) {
     throw new ConfigValidationError(`web.host 不能为空`);
+  }
+
+  if (typeof merged.imageGen.method !== "string" || merged.imageGen.method.trim().length === 0) {
+    throw new ConfigValidationError(`imageGen.method 不能为空`);
+  }
+  if (typeof merged.imageGen.model !== "string" || merged.imageGen.model.trim().length === 0) {
+    throw new ConfigValidationError(`imageGen.model 不能为空`);
+  }
+  if (typeof merged.imageGen.timeoutMs !== "number" || merged.imageGen.timeoutMs <= 0) {
+    throw new ConfigValidationError(`imageGen.timeoutMs 必须为正数: ${merged.imageGen.timeoutMs}`);
+  }
+  if (merged.imageGen.endpoint !== "" && !/^https?:\/\//i.test(merged.imageGen.endpoint)) {
+    throw new ConfigValidationError(`imageGen.endpoint 必须以 http(s):// 开头或留空`);
   }
 
   return merged;

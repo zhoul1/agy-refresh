@@ -1,0 +1,20 @@
+{
+  "error": {
+    "code": 429,
+    "message": "You have exhausted your capacity on this model. Your quota will reset after 2h52m4s.",
+    "status": "RESOURCE_EXHAUSTED",
+    "details": [
+      {
+        "@type": "type.googleapis.com/google.rpc.ErrorInfo",
+        "reason": "QUOTA_EXHAUSTED",
+        "domain": "cloudcode-pa.googleapis.com",
+        "metadata": {
+          "model": "gemini-3.1-flash-image",
+          "quotaResetDelay": "2h52m4.583682053s",
+          "quotaResetTimeStamp": "2026-07-09T15:33:14Z",
+          "uiMessage": "true"
+        }
+      }
+    ]
+  }
+}

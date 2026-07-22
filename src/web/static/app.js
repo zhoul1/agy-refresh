@@ -121,6 +121,14 @@ const LOCALE_DATA = {
     "settings.tray": "系统托盘",
     "settings.traySub": "在 Windows 通知区域显示图标，方便快速操作。",
     "settings.trayEnabled": "启用系统托盘图标",
+    "settings.imageGenMethod": "出图 RPC 方法名",
+    "settings.imageGenMethodHint": "本地 AGy 语言服务器的出图方法，默认 GenerateImage。若返回“无法识别”，在此改为正确方法名",
+    "settings.imageGenModel": "出图模型",
+    "settings.imageGenPrompt": "出图提示词",
+    "settings.imageGenEndpoint": "自定义出图端点 URL",
+    "settings.imageGenEndpointHint": "留空则调用本地 AGy 服务；填 cloudcode-pa 等直连地址（需 Bearer Token）",
+    "settings.imageGenAuthToken": "Bearer Token（直连时可选）",
+    "settings.imageGenTimeout": "超时 (毫秒)",
     "settings.share": "分享连接",
     "settings.shareSub": "局域网内的其他设备可通过此地址访问控制中心",
     "settings.shareUrl": "局域网地址",
@@ -150,6 +158,31 @@ const LOCALE_DATA = {
     "toast.started": "调度已启动",
     "toast.startFail": "启动失败: {{msg}}",
     "toast.triggered": "已触发，对话进行中",
+    "imagegen.title": "图像生成额度",
+    "imagegen.sub": "手动触发出图，根据 429 返回记录限流状态与重置倒计时",
+    "imagegen.noData": "尚无图像生成额度记录。触发一次出图后，把返回内容粘贴上报即可。",
+    "imagegen.reportBtn": "📷 上报本次出图结果",
+    "imagegen.activeExhaust": "限流中",
+    "imagegen.model": "模型",
+    "imagegen.status": "状态",
+    "imagegen.exhausted": "已耗尽 (429)",
+    "imagegen.normal": "正常",
+    "imagegen.resetCountdown": "重置倒计时",
+    "imagegen.resetTime": "重置时间",
+    "imagegen.observedAt": "记录时间",
+    "imagegen.history": "上报历史",
+    "imagegen.formTitle": "上报图像生成结果",
+    "imagegen.formHint": "粘贴出图接口返回的原始内容：限流时为 429 错误 JSON；成功时填 {\"ok\":true,\"model\":\"gemini-3.1-flash-image\"}",
+    "imagegen.placeholder": "在此粘贴返回的 JSON ...",
+    "imagegen.submit": "提交上报",
+    "imagegen.cancel": "取消",
+    "imagegen.toastCollected": "已记录：{{model}} {{s}}",
+    "imagegen.toastFail": "上报失败：{{msg}}",
+    "imagegen.triggerBtn": "📷 立即出图测试额度",
+    "imagegen.triggering": "正在出图...",
+    "imagegen.manualBtn": "手动上报",
+    "imagegen.triggerOk": "出图成功：{{model}} 正常",
+    "imagegen.triggerFail": "出图触发失败：{{msg}}",
     "logs.title": "实时日志",
     "logs.sub": "通过 SSE 推送，最多保留 500 条",
     "logs.source": "来源:",
@@ -294,6 +327,14 @@ const LOCALE_DATA = {
     "settings.tray": "System Tray",
     "settings.traySub": "Show an icon in the Windows notification area for quick actions.",
     "settings.trayEnabled": "Enable system tray icon",
+    "settings.imageGenMethod": "Image-gen RPC Method",
+    "settings.imageGenMethodHint": "Image-gen method on the local AGy language server. Default GenerateImage. Change here if result is 'unrecognized'",
+    "settings.imageGenModel": "Image-gen Model",
+    "settings.imageGenPrompt": "Image-gen Prompt",
+    "settings.imageGenEndpoint": "Custom Image-gen Endpoint URL",
+    "settings.imageGenEndpointHint": "Leave empty to call local AGy; set to a direct URL like cloudcode-pa (needs Bearer Token)",
+    "settings.imageGenAuthToken": "Bearer Token (for direct endpoint)",
+    "settings.imageGenTimeout": "Timeout (ms)",
     "settings.share": "Share Link",
     "settings.shareSub": "Other devices on the LAN can access the dashboard via this URL",
     "settings.shareUrl": "LAN URL",
@@ -323,6 +364,31 @@ const LOCALE_DATA = {
     "toast.started": "Scheduler started",
     "toast.startFail": "Start failed: {{msg}}",
     "toast.triggered": "Triggered, talk in progress",
+    "imagegen.title": "Image Gen Quota",
+    "imagegen.sub": "Trigger an image generation; report the 429 response to track limits & reset countdown",
+    "imagegen.noData": "No image-gen quota records yet. After a generation attempt, paste the returned content to report it.",
+    "imagegen.reportBtn": "📷 Report This Generation",
+    "imagegen.activeExhaust": "Rate Limited",
+    "imagegen.model": "Model",
+    "imagegen.status": "Status",
+    "imagegen.exhausted": "Exhausted (429)",
+    "imagegen.normal": "Normal",
+    "imagegen.resetCountdown": "Reset Countdown",
+    "imagegen.resetTime": "Reset Time",
+    "imagegen.observedAt": "Reported At",
+    "imagegen.history": "Report History",
+    "imagegen.formTitle": "Report Image Generation Result",
+    "imagegen.formHint": "Paste the raw response: 429 error JSON when rate-limited; or {\"ok\":true,\"model\":\"gemini-3.1-flash-image\"} on success",
+    "imagegen.placeholder": "Paste the returned JSON here ...",
+    "imagegen.submit": "Submit Report",
+    "imagegen.cancel": "Cancel",
+    "imagegen.toastCollected": "Recorded: {{model}} {{s}}",
+    "imagegen.toastFail": "Report failed: {{msg}}",
+    "imagegen.triggerBtn": "📷 Test Quota by Generating",
+    "imagegen.triggering": "Generating...",
+    "imagegen.manualBtn": "Manual Report",
+    "imagegen.triggerOk": "Generated OK: {{model}} normal",
+    "imagegen.triggerFail": "Generation failed: {{msg}}",
     "logs.title": "Live Logs",
     "logs.sub": "Via SSE, max 500 entries retained",
     "logs.source": "Source:",
@@ -385,6 +451,8 @@ const Store = {
   executionHistory: [],
   latestQuota: null,
   quotaHistory: [],
+  imageGenLatest: [],
+  imageGenHistory: [],
   models: [],
   logs: [],
   trendsHours: 168,
@@ -554,6 +622,12 @@ async function refreshQuotaHistory(hours) {
 async function refreshLogs() {
   Store.logs = await api.get("/api/logs?limit=300");
 }
+async function refreshImageGenLatest() {
+  try { Store.imageGenLatest = await api.get("/api/image-gen/latest"); } catch {}
+}
+async function refreshImageGenHistory(limit = 50) {
+  try { Store.imageGenHistory = await api.get(`/api/image-gen/history?limit=${limit}`); } catch {}
+}
 
 function renderTopbar() {
   const s = Store.status;
@@ -680,6 +754,62 @@ function renderOverview() {
     html.push(`<div class="card"><div class="empty">${t("quota.noData")}</div></div>`);
   }
 
+  // ── 图像生成额度 ───────────────────────────────
+  const igLatest = Store.imageGenLatest || [];
+  const igHistory = Store.imageGenHistory || [];
+  html.push(`<div class="card">
+    <div class="card-title">${t("imagegen.title")} <span class="card-title-sub">${t("imagegen.sub")}</span></div>
+    ${igLatest.length === 0
+      ? `<div class="empty">${t("imagegen.noData")}</div>`
+      : `<table class="model-table">
+        <thead><tr>
+          <th>${t("imagegen.model")}</th><th>${t("imagegen.status")}</th><th>${t("imagegen.resetCountdown")}</th><th>${t("imagegen.resetTime")}</th><th>${t("imagegen.observedAt")}</th>
+        </tr></thead>
+        <tbody>
+        ${igLatest.map((r) => {
+          const expired = r.resetTime && Date.now() >= new Date(r.resetTime).getTime();
+          const active = r.exhausted && !expired;
+          const statusBadge = active
+            ? '<span class="badge badge-danger">' + t("imagegen.activeExhaust") + '</span>'
+            : (r.exhausted ? '<span class="badge badge-neutral">' + t("imagegen.exhausted") + '</span>' : '<span class="badge badge-success">' + t("imagegen.normal") + '</span>');
+          return `<tr>
+            <td><span class="model-id">${escapeHtml(r.modelId)}</span></td>
+            <td>${statusBadge}</td>
+            <td class="countdown" data-cd-model="${escapeAttr(r.resetTime)}">${r.resetTime ? fmtCountdown(r.resetTime) : "—"}</td>
+            <td>${r.resetTime ? fmtTime(r.resetTime, true) : "—"}</td>
+            <td>${fmtAgo(r.observedAt)}</td>
+          </tr>`;
+        }).join("")}
+        </tbody>
+      </table>`}
+    <div class="action-bar" style="margin-top:12px">
+      <button class="btn btn-primary" id="imgGenTriggerBtn">${t("imagegen.triggerBtn")}</button>
+      <button class="btn" id="imgGenReportBtn">${t("imagegen.manualBtn")}</button>
+    </div>
+  </div>`);
+
+  if (igHistory.length > 0) {
+    html.push(`<div class="card">
+      <div class="card-title">${t("imagegen.history")}</div>
+      <table>
+        <thead><tr>
+          <th>${t("imagegen.model")}</th><th>${t("imagegen.status")}</th><th>${t("imagegen.resetTime")}</th><th>${t("imagegen.observedAt")}</th>
+        </tr></thead>
+        <tbody>
+        ${igHistory.slice(0, 10).map((r) => {
+          const badge = r.exhausted ? '<span class="badge badge-danger">' + t("imagegen.exhausted") + '</span>' : '<span class="badge badge-success">' + t("imagegen.normal") + '</span>';
+          return `<tr>
+            <td><span class="model-id">${escapeHtml(r.modelId)}</span></td>
+            <td>${badge}</td>
+            <td>${r.resetTime ? fmtTime(r.resetTime, true) : "—"}</td>
+            <td>${fmtAgo(r.observedAt)}</td>
+          </tr>`;
+        }).join("")}
+        </tbody>
+      </table>
+    </div>`);
+  }
+
   html.push(`<div class="grid-2">
     <div class="card">
       <div class="card-title">${t("exec.recent")}</div>
@@ -749,6 +879,63 @@ function renderOverview() {
     }
   };
   bindExecutionRowToggles();
+  const imgGenReportBtn = $("#imgGenReportBtn");
+  if (imgGenReportBtn) imgGenReportBtn.onclick = () => openImageGenReportModal();
+  const imgGenTriggerBtn = $("#imgGenTriggerBtn");
+  if (imgGenTriggerBtn) imgGenTriggerBtn.onclick = async () => {
+    imgGenTriggerBtn.disabled = true;
+    const original = imgGenTriggerBtn.textContent;
+    imgGenTriggerBtn.textContent = t("imagegen.triggering");
+    try {
+      const r = await api.send("/api/image-gen/trigger", "POST");
+      if (r.ok) {
+        toast(r.isExhausted ? t("imagegen.toastCollected", { model: r.modelId, s: t("imagegen.exhausted") }) : t("imagegen.triggerOk", { model: r.modelId }), r.isExhausted ? "error" : "success");
+      } else {
+        toast(t("imagegen.triggerFail", { msg: r.error || "unknown" }), "error");
+        console.warn("image-gen trigger raw:", r.raw);
+      }
+      await refreshImageGenLatest();
+      await refreshImageGenHistory();
+      renderOverview();
+    } catch (e) {
+      toast(t("imagegen.triggerFail", { msg: e.message }), "error");
+    } finally {
+      imgGenTriggerBtn.disabled = false;
+      imgGenTriggerBtn.textContent = original;
+    }
+  };
+}
+
+function openImageGenReportModal() {
+  const overlay = document.createElement("div");
+  overlay.className = "modal-overlay";
+  overlay.innerHTML = `<div class="modal">
+    <div class="modal-title">${t("imagegen.formTitle")}</div>
+    <div class="modal-hint">${t("imagegen.formHint")}</div>
+    <textarea class="form-input modal-textarea" id="imgGenRaw" placeholder="${t("imagegen.placeholder")}"></textarea>
+    <div class="action-bar" style="margin-top:14px">
+      <button class="btn btn-primary" id="imgGenSubmit">${t("imagegen.submit")}</button>
+      <button class="btn" id="imgGenCancel">${t("imagegen.cancel")}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(overlay);
+  const close = () => overlay.remove();
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) close(); });
+  $("#imgGenCancel").onclick = close;
+  $("#imgGenSubmit").onclick = async () => {
+    const raw = $("#imgGenRaw").value.trim();
+    if (!raw) { toast(t("imagegen.toastFail", { msg: "empty" }), "error"); return; }
+    try {
+      const r = await api.send("/api/image-gen/report", "POST", { raw });
+      toast(t("imagegen.toastCollected", { model: r.modelId, s: r.isExhausted ? t("imagegen.exhausted") : t("imagegen.normal") }), "success");
+      close();
+      await refreshImageGenLatest();
+      await refreshImageGenHistory();
+      renderOverview();
+    } catch (e) {
+      toast(t("imagegen.toastFail", { msg: e.message }), "error");
+    }
+  };
 }
 
 function renderExecutionRows(rows, withLimit = false) {
@@ -1070,6 +1257,40 @@ function renderSettings() {
     </div>
   </div>`);
 
+  html.push(`  html.push(`<div class="card">
+    <div class="card-title">${t("imagegen.title")} <span class="card-title-sub">${t("imagegen.sub")}</span></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">${t("settings.imageGenMethod")}</label>
+        <input class="form-input" type="text" id="cfg-imageGenMethod" value="${escapeAttr(c.imageGen.method)}">
+        <div class="form-hint">${t("settings.imageGenMethodHint")}</div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">${t("settings.imageGenModel")}</label>
+        <input class="form-input" type="text" id="cfg-imageGenModel" value="${escapeAttr(c.imageGen.model)}">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("settings.imageGenPrompt")}</label>
+      <input class="form-input" type="text" id="cfg-imageGenPrompt" value="${escapeAttr(c.imageGen.prompt)}">
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("settings.imageGenEndpoint")}</label>
+      <input class="form-input" type="text" id="cfg-imageGenEndpoint" value="${escapeAttr(c.imageGen.endpoint)}">
+      <div class="form-hint">${t("settings.imageGenEndpointHint")}</div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">${t("settings.imageGenAuthToken")}</label>
+      <input class="form-input" type="password" id="cfg-imageGenAuthToken" value="${escapeAttr(c.imageGen.authToken)}" autocomplete="off">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">${t("settings.imageGenTimeout")}</label>
+        <input class="form-input" type="number" id="cfg-imageGenTimeout" value="${c.imageGen.timeoutMs}" min="1000">
+      </div>
+    </div>
+  </div>`);
+
   html.push(`<div class="card">
     <div class="card-title">${t("settings.web")}</div>
     <div class="fieldset-sub">${t("settings.webSub")}</div>
@@ -1138,6 +1359,15 @@ function renderSettings() {
           intervalMinutes: parseInt($("#cfg-monInterval").value, 10),
           agyTimeoutMs: parseInt($("#cfg-agyTimeout").value, 10),
         },
+        imageGen: {
+          enabled: true,
+          endpoint: $("#cfg-imageGenEndpoint").value.trim(),
+          method: $("#cfg-imageGenMethod").value.trim() || "GenerateImage",
+          model: $("#cfg-imageGenModel").value.trim() || "gemini-3.1-flash-image",
+          prompt: $("#cfg-imageGenPrompt").value,
+          authToken: $("#cfg-imageGenAuthToken").value,
+          timeoutMs: parseInt($("#cfg-imageGenTimeout").value, 10) || 30000,
+        },
         web: { trayEnabled },
       };
       Store.config = await api.send("/api/config", "PUT", payload);
@@ -1161,6 +1391,12 @@ function renderSettings() {
     $("#cfg-maxRetries").value = "3";
     $("#cfg-monInterval").value = "10";
     $("#cfg-agyTimeout").value = "10000";
+    $("#cfg-imageGenMethod").value = "GenerateImage";
+    $("#cfg-imageGenModel").value = "gemini-3.1-flash-image";
+    $("#cfg-imageGenPrompt").value = "a tiny red square on white background";
+    $("#cfg-imageGenEndpoint").value = "";
+    $("#cfg-imageGenAuthToken").value = "";
+    $("#cfg-imageGenTimeout").value = "30000";
     const tb = $("#cfg-trayEnabled");
     if (tb) tb.checked = false;
     toast(t("toast.resetDone"), "info");
@@ -1331,6 +1567,11 @@ function connectSSE() {
     if (Store.logs.length > 500) Store.logs.splice(0, Store.logs.length - 500);
     if (location.hash === "#logs") redrawLogs();
   }));
+  es.addEventListener("imagegen", onEvent((d) => {
+    refreshImageGenLatest();
+    refreshImageGenHistory();
+    if (location.hash === "#overview" || location.hash === "") setRoute("overview");
+  }));
   es.onerror = () => {
     conn.innerHTML = '<span class="dot dot-warn"></span><span>' + t("conn.reconnect") + '</span>';
   };
@@ -1345,6 +1586,8 @@ async function boot() {
   await refreshStatus();
   await refreshLatestQuota();
   await refreshExecutionHistory();
+  await refreshImageGenLatest();
+  await refreshImageGenHistory();
   await refreshLogs();
   renderTopbar();
   applyI18n();

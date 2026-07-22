@@ -2,6 +2,7 @@ import { Database } from "bun:sqlite";
 import { join, dirname } from "path";
 import { mkdirSync, existsSync } from "fs";
 import type { QuotaSnapshot, ModelQuotaInfo } from "./agy-quota";
+import type { ImageGenQuotaSnapshot } from "./image-gen-quota";
 
 const DATA_DIR = join(import.meta.dir, "..", "..", "data");
 const DEFAULT_DB_PATH = join(DATA_DIR, "quota.db");
@@ -68,6 +69,23 @@ export function initSchema(db: Database) {
   try { db.run("ALTER TABLE model_quotas ADD COLUMN supports_images INTEGER DEFAULT 0"); } catch {}
   db.run(`CREATE INDEX IF NOT EXISTS idx_model_quotas_record ON model_quotas(record_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_quota_records_time ON quota_records(recorded_at)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS image_gen_quotas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      observed_at TEXT NOT NULL,
+      model_id TEXT NOT NULL,
+      status TEXT,
+      is_exhausted INTEGER DEFAULT 0,
+      reset_time TEXT,
+      reset_delay TEXT,
+      domain TEXT,
+      reason TEXT,
+      message TEXT,
+      raw_json TEXT
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_image_gen_model ON image_gen_quotas(model_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_image_gen_time ON image_gen_quotas(observed_at)`);
   db.run(`
     CREATE TABLE IF NOT EXISTS daemon_executions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -191,6 +209,68 @@ export function getModelHistory(modelId: string, hours = 168): { time: string; u
 
 export function closeDb() {
   if (_db) { _db.close(); _db = null; }
+}
+
+export interface ImageGenQuotaRow {
+  id: number;
+  observed_at: string;
+  model_id: string;
+  status: string | null;
+  is_exhausted: number;
+  reset_time: string | null;
+  reset_delay: string | null;
+  domain: string | null;
+  reason: string | null;
+  message: string | null;
+  raw_json: string;
+}
+
+export function saveImageGenQuota(snapshot: ImageGenQuotaSnapshot): number {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const stmt = db.prepare(`
+    INSERT INTO image_gen_quotas (observed_at, model_id, status, is_exhausted, reset_time, reset_delay, domain, reason, message, raw_json)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  const info = stmt.run(
+    now,
+    snapshot.modelId,
+    snapshot.status || null,
+    snapshot.isExhausted ? 1 : 0,
+    snapshot.resetTime || null,
+    snapshot.resetDelay || null,
+    snapshot.domain || null,
+    snapshot.reason || null,
+    snapshot.message || null,
+    snapshot.rawJson,
+  );
+  return Number(info.lastInsertRowid);
+}
+
+export function getLatestImageGenQuota(): ImageGenQuotaRow | null {
+  const db = getDb();
+  const rows = db.query(`SELECT * FROM image_gen_quotas ORDER BY observed_at DESC LIMIT 1`).all() as ImageGenQuotaRow[];
+  return rows[0] || null;
+}
+
+export function getImageGenHistory(limit = 100): ImageGenQuotaRow[] {
+  const db = getDb();
+  return db.query(`SELECT * FROM image_gen_quotas ORDER BY observed_at DESC LIMIT ?`).all(limit) as ImageGenQuotaRow[];
+}
+
+/** 每个模型的最新一条记录（用于展示当前额度状态） */
+export function getImageGenLatestPerModel(): ImageGenQuotaRow[] {
+  const db = getDb();
+  return db.query(`
+    SELECT q1.*
+    FROM image_gen_quotas q1
+    JOIN (
+      SELECT model_id, MAX(observed_at) AS mx
+      FROM image_gen_quotas
+      GROUP BY model_id
+    ) q2 ON q1.model_id = q2.model_id AND q1.observed_at = q2.mx
+    ORDER BY q1.model_id
+  `).all() as ImageGenQuotaRow[];
 }
 
 export interface DaemonExecutionRow {

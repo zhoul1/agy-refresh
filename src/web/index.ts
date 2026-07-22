@@ -10,6 +10,8 @@ import {
   getRecords,
   getRecentExecutions,
   getLatestExecution,
+  getImageGenHistory,
+  getImageGenLatestPerModel,
   type DaemonExecutionRow,
 } from "../lib/database";
 import {
@@ -34,6 +36,10 @@ import {
 import { runDaemonOnce } from "../lib/daemon";
 import { collectOnce } from "../lib/collector";
 import { setTrayApiUrl, startTray, stopTray, isTrayRunning } from "../lib/tray";
+import { parseImageGenQuota } from "../lib/image-gen-quota";
+import { saveImageGenQuota } from "../lib/database";
+import { triggerImageGen } from "../lib/image-gen-trigger";
+import { recordImageGenReported } from "../lib/runtime";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const STATIC_DIR = join(HERE, "static");
@@ -288,6 +294,66 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
     return getModelHistory(params.id, hours);
   });
 
+  app.post("/api/image-gen/report", async ({ body, set }) => {
+    const input = (body as any)?.raw ?? (body as any)?.rawJson ?? body;
+    const snapshot = parseImageGenQuota(input);
+    if (!snapshot) {
+      set.status = 400;
+      return { error: "无法解析图像生成返回内容：未找到模型标识或限流信息", type: "parse" };
+    }
+    const id = saveImageGenQuota(snapshot);
+    appendLog("web", "info", `图像生成额度已记录: ${snapshot.modelId} ${snapshot.isExhausted ? "已耗尽" : "正常"}`);
+    recordImageGenReported();
+    return { id, modelId: snapshot.modelId, isExhausted: snapshot.isExhausted, resetTime: snapshot.resetTime };
+  });
+
+  app.get("/api/image-gen/latest", () => {
+    const rows = getImageGenLatestPerModel();
+    return rows.map((r) => ({
+      modelId: r.model_id,
+      status: r.status,
+      exhausted: r.is_exhausted === 1,
+      resetTime: r.reset_time,
+      resetDelay: r.reset_delay,
+      domain: r.domain,
+      reason: r.reason,
+      message: r.message,
+      observedAt: r.observed_at,
+    }));
+  });
+
+  app.get("/api/image-gen/history", ({ query }) => {
+    const limit = Math.min(parseInt(String(query.limit ?? "100"), 10) || 100, 500);
+    return getImageGenHistory(limit).map((r) => ({
+      id: r.id,
+      modelId: r.model_id,
+      status: r.status,
+      exhausted: r.is_exhausted === 1,
+      resetTime: r.reset_time,
+      resetDelay: r.reset_delay,
+      observedAt: r.observed_at,
+      message: r.message,
+    }));
+  });
+
+  app.post("/api/image-gen/trigger", async ({ set }) => {
+    const config = loadConfig(configPath);
+    try {
+      const result = await triggerImageGen(config.imageGen);
+      if (!result.ok) {
+        set.status = 502;
+        return { ok: false, error: result.error, raw: result.raw, baseUrl: result.baseUrl, method: result.method };
+      }
+      const id = saveImageGenQuota(result.snapshot!);
+      appendLog("web", "info", `图像生成已触发并记录: ${result.snapshot!.modelId} ${result.snapshot!.isExhausted ? "已耗尽" : "正常"}`);
+      recordImageGenReported();
+      return { ok: true, id, modelId: result.snapshot!.modelId, isExhausted: result.snapshot!.isExhausted, resetTime: result.snapshot!.resetTime };
+    } catch (e: any) {
+      set.status = 500;
+      return { ok: false, error: e.message || String(e) };
+    }
+  });
+
   app.get("/api/logs", ({ query }) => {
     const limit = Math.min(parseInt(String(query.limit ?? "200"), 10) || 200, 500);
     return getLogs(limit);
@@ -320,6 +386,7 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
           ["monitor:tick", (d) => send("monitor", { type: "tick", nextCollectAt: d.nextCollectAt })],
           ["monitor:collected", (d) => send("monitor", { type: "collected", ...d })],
           ["monitor:failed", (d) => send("monitor", { type: "failed", ...d })],
+          ["imagegen:reported", () => send("imagegen", { type: "reported" })],
           ["log", (d: LogEntry) => send("log", d)],
         ];
         for (const [name, h] of handlers) onEvent(name as any, h as any);

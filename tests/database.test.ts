@@ -2,9 +2,10 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from "bun:test"
 import { mkdirSync, existsSync, rmSync } from "fs";
 import { join } from "path";
 import { Database } from "bun:sqlite";
-import { initSchema, saveSnapshot, getRecords, getLatestWithModels, getModelHistory, getRecordsRange, resetDb } from "../src/lib/database";
+import { initSchema, saveSnapshot, getRecords, getLatestWithModels, getModelHistory, getRecordsRange, resetDb, saveImageGenQuota, getImageGenLatestPerModel, getImageGenHistory, getLatestImageGenQuota } from "../src/lib/database";
 import { readFileSync } from "fs";
 import { parseUserStatusToSnapshot } from "../src/lib/quota-parser";
+import { parseImageGenQuota } from "../src/lib/image-gen-quota";
 
 const FIXTURE_DIR = join(import.meta.dir, "fixtures");
 const TEST_DB_DIR = join(import.meta.dir, ".tmp");
@@ -105,5 +106,37 @@ describe("initSchema", () => {
     expect(() => initSchema(db)).not.toThrow();
     expect(() => initSchema(db)).not.toThrow();
     db.close();
+  });
+});
+
+describe("image_gen_quotas", () => {
+  it("should save an exhausted report and read it back", () => {
+    const rawJson = readFileSync(join(FIXTURE_DIR, "image-gen-quota.json"), "utf-8");
+    const snapshot = parseImageGenQuota(rawJson)!;
+    const id = saveImageGenQuota(snapshot);
+    expect(id).toBeGreaterThan(0);
+
+    const latest = getLatestImageGenQuota();
+    expect(latest).not.toBeNull();
+    expect(latest!.model_id).toBe("gemini-3.1-flash-image");
+    expect(latest!.is_exhausted).toBe(1);
+    expect(latest!.reset_time).toBe("2026-07-09T15:33:14Z");
+  });
+
+  it("should return latest per model", () => {
+    const err = parseImageGenQuota(readFileSync(join(FIXTURE_DIR, "image-gen-quota.json"), "utf-8"))!;
+    saveImageGenQuota(err);
+    const ok = parseImageGenQuota({ ok: true, model: "gemini-3.1-flash-image" })!;
+    saveImageGenQuota(ok);
+
+    const perModel = getImageGenLatestPerModel();
+    expect(perModel).toHaveLength(1);
+    expect(perModel[0].model_id).toBe("gemini-3.1-flash-image");
+    expect(perModel[0].is_exhausted).toBe(0);
+
+    const history = getImageGenHistory(10);
+    expect(history.length).toBeGreaterThanOrEqual(2);
+    expect(history[0].is_exhausted).toBe(0);
+    expect(history[history.length - 1].is_exhausted).toBe(1);
   });
 });

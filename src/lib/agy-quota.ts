@@ -85,7 +85,7 @@ async function findConnectApi(ports: number[], csrfToken?: string): Promise<stri
   return null;
 }
 
-async function findConnectApiWithTokens(
+export async function findConnectApiWithTokens(
   ports: number[],
   portTokenMap: Map<number, string>,
   extraTokens: string[],

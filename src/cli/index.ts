@@ -3,6 +3,9 @@ import { runAgyCommand } from "../lib/executor";
 import { loadConfig } from "../lib/config";
 import { collectOnce, startMonitor } from "../lib/collector";
 import { startWebServer } from "../web";
+import { parseImageGenQuota } from "../lib/image-gen-quota";
+import { saveImageGenQuota } from "../lib/database";
+import { triggerImageGen } from "../lib/image-gen-trigger";
 import {
   registerDaemonFactory,
   registerMonitorFactory,
@@ -26,6 +29,8 @@ function showHelp() {
     --monitor-only     仅启动 monitor 采集（带 Web）
     --once, -o         立即执行一次 agy 对话并退出
     --collect-now      立即采集一次额度数据并退出
+    --report-image-gen <file|->   记录一次图像生成返回内容（429 JSON 或 {ok:true,model}），- 表示标准输入
+    --trigger-image-gen            真正触发一次图像生成（调用本地 AGy 服务出图 RPC），自动解析并落库
     --config <path>    指定自定义配置文件路径（默认 config.json）
     --help, -h         显示帮助信息
 
@@ -121,6 +126,57 @@ async function main() {
     }
   }
 
+  if (args.includes("--report-image-gen")) {
+    const idx = args.indexOf("--report-image-gen");
+    const source = idx + 1 < args.length ? args[idx + 1] : "-";
+    let raw: string;
+    if (source === "-") {
+      raw = await Bun.stdin.text();
+    } else {
+      const { readFileSync } = await import("fs");
+      raw = readFileSync(source, "utf-8");
+    }
+    if (!raw || !raw.trim()) {
+      console.error("[CLI] 未读取到任何内容，请通过文件参数或标准输入提供图像生成返回内容（429 JSON 或 {ok:true,model}）");
+      process.exit(1);
+    }
+    const snapshot = parseImageGenQuota(raw);
+    if (!snapshot) {
+      console.error("[CLI] 无法解析内容：未找到模型标识或限流信息。请确认是 429 错误 JSON 或成功上报对象。");
+      process.exit(1);
+    }
+    const id = saveImageGenQuota(snapshot);
+    console.log(`[CLI] 已记录图像生成额度 #${id}`);
+    console.log(`  模型:   ${snapshot.modelId}`);
+    console.log(`  状态:   ${snapshot.isExhausted ? "已耗尽 (429)" : "正常"}`);
+    if (snapshot.resetTime) console.log(`  重置:   ${snapshot.resetTime}`);
+    if (snapshot.resetDelay) console.log(`  倒计时: ${snapshot.resetDelay}`);
+    process.exit(0);
+  }
+
+  if (args.includes("--trigger-image-gen")) {
+    const config = loadConfig(configPath);
+    console.log(`[CLI] 正在触发图像生成（model=${config.imageGen.model}, method=${config.imageGen.method}）...`);
+    try {
+      const result = await triggerImageGen(config.imageGen);
+      if (!result.ok) {
+        console.error(`[CLI] 出图触发失败: ${result.error || "未知错误"}`);
+        if (result.raw) console.error(`[CLI] 原始返回:\n${result.raw}`);
+        process.exit(1);
+      }
+      const id = saveImageGenQuota(result.snapshot!);
+      console.log(`[CLI] 已记录图像生成额度 #${id}`);
+      console.log(`  模型:   ${result.snapshot!.modelId}`);
+      console.log(`  状态:   ${result.snapshot!.isExhausted ? "已耗尽 (429)" : "正常出图"}`);
+      if (result.snapshot!.resetTime) console.log(`  重置:   ${result.snapshot!.resetTime}`);
+      if (result.snapshot!.resetDelay) console.log(`  倒计时: ${result.snapshot!.resetDelay}`);
+      process.exit(0);
+    } catch (err: any) {
+      console.error(`[CLI] 出图触发异常: ${err.message || String(err)}`);
+      process.exit(1);
+    }
+  }
+
   if (args.includes("--once") || args.includes("-o")) {
     const config = loadConfig(configPath);
     console.log(`[CLI] 正在以单次执行模式调用命令: ${config.command.executable} ${config.command.args.join(" ")}`);
@@ -146,6 +202,8 @@ async function main() {
     await bootDaemonOnly(configPath);
   } else if (args.includes("--monitor-only")) {
     await bootMonitorOnly(configPath);
+  } else if (args.includes("--serve-only")) {
+    await bootWebOnly(configPath);
   } else {
     await bootAll(configPath);
   }
