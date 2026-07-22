@@ -1257,7 +1257,7 @@ function renderSettings() {
     </div>
   </div>`);
 
-  html.push(`  html.push(`<div class="card">
+  html.push(`<div class="card">
     <div class="card-title">${t("imagegen.title")} <span class="card-title-sub">${t("imagegen.sub")}</span></div>
     <div class="form-row">
       <div class="form-group">
