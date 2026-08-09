@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
   <title>Agy 控制中心</title>
-  <link rel="stylesheet" href="/style.css?v=3">
+  <link rel="stylesheet" href="/style.css?v=4">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
@@ -42,6 +42,7 @@
         <div class="uptime" id="uptime">运行 0 分钟</div>
       </div>
     </aside>
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
     <main class="main">
       <header class="topbar">
         <div class="topbar-left">
@@ -80,6 +81,6 @@
       box.textContent = "前端 Promise 未处理（请截图发我）:\n" + (e.reason && (e.reason.stack || e.reason.message) || e.reason || e);
     });
   </script>
-  <script src="/app.js?v=3"></script>
+  <script src="/app.js?v=4"></script>
 </body>
 </html>

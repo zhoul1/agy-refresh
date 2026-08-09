@@ -1758,6 +1758,8 @@ async function boot() {
   });
 
   if (hamburgerBtn) hamburgerBtn.onclick = toggleSidebar;
+  const overlay = $("#sidebarOverlay");
+  if (overlay) overlay.onclick = () => closeSidebar();
 
   // Restore sidebar state from localStorage
   // Start with sidebar open by default (no state saved or unknown)
