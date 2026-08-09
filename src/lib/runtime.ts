@@ -246,7 +246,9 @@ export function recordMonitorCollection(payload: RuntimeEventPayloads["monitor:c
 
 export function recordMonitorFailure(error: string): void {
   monitor.lastError = error;
-  monitor.lastCollectionAt = new Date().toISOString();
+  // Note: we intentionally do NOT update lastCollectionAt here;
+  // that field should reflect the last *successful* collection,
+  // matching the quota history table. Failed attempts only update lastError.
   emitter.emit("monitor:failed", { error });
   emitter.emit("status", undefined);
 }
