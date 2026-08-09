@@ -585,7 +585,8 @@ fieldset legend { font-size: 13px; font-weight: 700; color: var(--text); padding
 }
 /* ═══ Responsive — Mobile (off-canvas drawer) ═══ */
 @media (max-width: 600px) {
-  #app { grid-template-columns: 0 1fr; }
+  #app { display: block; }
+  .main { display: block; width: 100%; }
   .sidebar {
     position: fixed; left: 0; top: 0; bottom: 0; width: 264px;
     z-index: 200; box-shadow: var(--shadow-lg);
