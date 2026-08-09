@@ -20,6 +20,7 @@ const LOCALE_DATA = {
     "pill.monitorRunning": "运行中",
     "pill.monitorStopped": "已停止",
     "pill.unknown": "--",
+    "common.loading": "加载中…",
     "page.overview.title": "总览",
     "page.overview.sub": "最新额度、运行状态与快捷操作",
     "page.scheduler.title": "调度",
@@ -240,6 +241,7 @@ const LOCALE_DATA = {
     "pill.monitorRunning": "Running",
     "pill.monitorStopped": "Stopped",
     "pill.unknown": "--",
+    "common.loading": "Loading…",
     "page.overview.title": "Overview",
     "page.overview.sub": "Latest quota, status & quick actions",
     "page.scheduler.title": "Scheduler",
@@ -1087,6 +1089,7 @@ function handleExecutionRowClick(e) {
 }
 
 async function renderScheduler() {
+  $("#content").innerHTML = `<div class="page-loading">${t("common.loading")}</div>`;
   const s = Store.status;
   const cfg = Store.config;
   try { await refreshExecutionHistory(); } catch {}
@@ -1287,6 +1290,7 @@ function renderTrendsPoolSummary() {
 }
 
 async function renderTrends() {
+  $("#content").innerHTML = `<div class="page-loading">${t("common.loading")}</div>`;
   await refreshQuotaHistory(Store.trendsHours);
   const html = [];
   html.push(`<div class="tabs-row">
@@ -1626,12 +1630,15 @@ function applyI18n() {
   if (subEl && PageSubs[cur]) subEl.textContent = t(PageSubs[cur]);
 }
 
+let _settingHash = false;
 function setRoute(route) {
   if (!PageTitles[route]) route = "overview";
   $$(".nav-item").forEach((el) => el.classList.toggle("active", el.getAttribute("data-route") === route));
   $("#pageTitle").textContent = t(PageTitles[route]);
   $("#pageSub").textContent = t(PageSubs[route]);
+  _settingHash = true;
   location.hash = route;
+  _settingHash = false;
   switch (route) {
     case "overview": renderOverview(); break;
     case "scheduler": renderScheduler(); break;
@@ -1722,12 +1729,14 @@ async function boot() {
 
   function closeSidebar() {
     appEl.classList.add("sidebar-closed");
+    appEl.classList.remove("sidebar-open");
     hamburgerBtn.innerHTML = "☰";
     hamburgerBtn.title = _lang === "zh" ? "展开侧边栏" : "Open sidebar";
     localStorage.setItem("agy-sidebar", "collapsed");
   }
   function openSidebar() {
     appEl.classList.remove("sidebar-closed");
+    appEl.classList.add("sidebar-open");
     hamburgerBtn.innerHTML = "✕";
     hamburgerBtn.title = _lang === "zh" ? "收起侧边栏" : "Close sidebar";
     localStorage.setItem("agy-sidebar", "open");
@@ -1779,7 +1788,10 @@ async function boot() {
   }, 30000);
 }
 
-window.addEventListener("hashchange", () => setRoute(location.hash.replace("#", "")));
+window.addEventListener("hashchange", () => {
+  if (_settingHash) return;
+  setRoute(location.hash.replace("#", ""));
+});
 window.addEventListener("beforeunload", () => { if (Store.sse) Store.sse.close(); });
 
 if (document.readyState === "loading") {

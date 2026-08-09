@@ -552,6 +552,18 @@ fieldset legend { font-size: 13px; font-weight: 700; color: var(--text); padding
 /* ═══ Settings actions (mobile full-width) ═══ */
 .settings-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 
+/* ═══ Page loading skeleton ═══ */
+.page-loading {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 240px; color: var(--text-3); font-size: 14px; gap: 10px;
+}
+.page-loading::after {
+  content: ""; width: 18px; height: 18px;
+  border: 2px solid var(--border-strong); border-top-color: var(--primary);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* ═══ Responsive — Tablet (icon rail) ═══ */
 @media (max-width: 1100px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
@@ -578,9 +590,9 @@ fieldset legend { font-size: 13px; font-weight: 700; color: var(--text); padding
     position: fixed; left: 0; top: 0; bottom: 0; width: 264px;
     z-index: 200; box-shadow: var(--shadow-lg);
     background: linear-gradient(180deg, #ffffff 0%, #f7f8fb 100%);
+    transform: translateX(-100%); /* 默认收起，避免 JS 初始化前盖住内容 */
   }
-  #app.sidebar-closed .sidebar { transform: translateX(-100%); }
-  #app:not(.sidebar-closed) .sidebar { transform: translateX(0); }
+  #app.sidebar-open .sidebar { transform: translateX(0); }
   .brand { justify-content: flex-start; padding: 0 20px 18px; }
   .brand-text { display: block; }
   .nav-item { justify-content: flex-start; padding: 10px 14px; gap: 12px; }
