@@ -103,7 +103,8 @@ const LOCALE_DATA = {
     "collect.promptCredits": "Prompt Credits",
     "collect.flowCredits": "Flow Credits",
     "collect.noRecords": "暂无采集记录",
-    "collect.failureHint": "近期采集尝试失败，仅成功记录会显示。请确保 AGy 正在运行或查看日志。",
+    "collect.status": "状态",
+    "collect.failed": "失败",
     "trends.24h": "24 小时",
     "trends.7d": "7 天",
     "trends.30d": "30 天",
@@ -322,7 +323,8 @@ const LOCALE_DATA = {
     "collect.promptCredits": "Prompt Credits",
     "collect.flowCredits": "Flow Credits",
     "collect.noRecords": "No collection records yet",
-    "collect.failureHint": "Recent collection attempts failed; only successful attempts are shown. Make sure AGy is running or check the logs.",
+    "collect.status": "Status",
+    "collect.failed": "Failed",
     "trends.24h": "24 Hours",
     "trends.7d": "7 Days",
     "trends.30d": "30 Days",
@@ -649,7 +651,7 @@ async function refreshQuotaHistory(hours) {
 }
 async function refreshCollectionHistory() {
   try {
-    Store.collectionHistory = await api.get("/api/quota/history?hours=720");
+    Store.collectionHistory = await api.get("/api/collection/history?hours=720");
   } catch (e) { console.warn("collection history refresh failed", e); }
 }
 async function refreshLogs() {
@@ -1196,28 +1198,30 @@ function renderExecHistoryPanel() {
 
 function renderCollectionHistory() {
   const list = Store.collectionHistory || [];
-  const lastErr = Store.status?.monitor?.lastError;
-  const warning = lastErr ? `<div style="margin-bottom:12px"><span class="badge badge-danger">${escapeHtml(lastErr)}</span><div class="text-muted-sm" style="margin-top:4px">${t("collect.failureHint")}</div></div>` : "";
-  if (list.length === 0) return `<div class="card">${warning}<div class="empty">${t("collect.noRecords")}</div></div>`;
+  if (list.length === 0) return `<div class="card"><div class="empty">${t("collect.noRecords")}</div></div>`;
   const sorted = [...list].sort((a, b) => new Date(b.time) - new Date(a.time));
   const rows = sorted.map((h) => {
+    const ok = h.success !== false;
     const pc = h.credits || {};
     const fc = h.flowCredits || {};
-    const models = h.models || [];
     const acct = h.email || h.name || "—";
-    const pcStr = pc.used != null && pc.limit != null ? pc.used + " / " + pc.limit : "—";
-    const fcStr = fc.used != null && fc.limit != null ? fc.used + " / " + fc.limit : "—";
+    const pcStr = !ok ? "—" : (pc.used != null && pc.limit != null ? pc.used + " / " + pc.limit : "—");
+    const fcStr = !ok ? "—" : (fc.used != null && fc.limit != null ? fc.used + " / " + fc.limit : "—");
+    const status = ok
+      ? '<span class="badge badge-success">✓</span>'
+      : `<span class="badge badge-danger" title="${escapeHtml(h.error || "")}">✗ ${t("collect.failed")}</span>`;
     return `<tr>
+      <td>${status}</td>
       <td>${fmtTime(h.time, true)}</td>
       <td>${escapeHtml(acct)}</td>
-      <td class="num">${models.length}</td>
+      <td class="num">${ok && h.modelCount != null ? h.modelCount : "—"}</td>
       <td>${pcStr}</td>
       <td>${fcStr}</td>
     </tr>`;
   }).join("");
-  return `<div class="card">${warning}<div class="card-title">${t("scheduler.tabCollect")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>
+  return `<div class="card"><div class="card-title">${t("scheduler.tabCollect")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>
     <div class="table-scroll"><table>
-      <thead><tr><th>${t("collect.time")}</th><th>${t("collect.account")}</th><th class="num">${t("collect.modelCount")}</th><th>${t("collect.promptCredits")}</th><th>${t("collect.flowCredits")}</th></tr></thead>
+      <thead><tr><th>${t("collect.status")}</th><th>${t("collect.time")}</th><th>${t("collect.account")}</th><th class="num">${t("collect.modelCount")}</th><th>${t("collect.promptCredits")}</th><th>${t("collect.flowCredits")}</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div></div>`;
 }

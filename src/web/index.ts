@@ -12,6 +12,7 @@ import {
   getLatestExecution,
   getImageGenHistory,
   getImageGenLatestPerModel,
+  getCollectionAttempts,
   type DaemonExecutionRow,
 } from "../lib/database";
 import {
@@ -287,6 +288,21 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
         tagDescription: m.tag_description,
         supportsImages: m.supports_images === 1,
       })),
+    }));
+  });
+
+  // 采集历史：成功与失败都记录（失败也出现在历史里）
+  app.get("/api/collection/history", ({ query }) => {
+    const hours = Math.min(parseInt(String(query.hours ?? "720"), 10) || 720, 24 * 30);
+    return getCollectionAttempts(hours).map((a) => ({
+      time: a.time,
+      success: a.success,
+      error: a.error,
+      email: a.email,
+      name: a.name,
+      modelCount: a.modelCount,
+      credits: a.promptCreditsUsed != null ? { used: a.promptCreditsUsed, limit: a.promptCreditsLimit } : null,
+      flowCredits: a.flowCreditsUsed != null ? { used: a.flowCreditsUsed, limit: a.flowCreditsLimit } : null,
     }));
   });
 

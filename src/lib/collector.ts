@@ -1,7 +1,7 @@
 import { quietSpawnSync } from "./spawn";
 import { detectAllAgyProcesses, discoverAllListeningPorts, type AgyProcessInfo } from "./agy-process";
 import { collectQuota, type QuotaSnapshot } from "./agy-quota";
-import { saveSnapshot } from "./database";
+import { saveSnapshot, recordCollectionAttempt } from "./database";
 import type { MonitorConfig } from "./config";
 import { appendLog, setMonitorNextCollectAt, recordMonitorCollection, recordMonitorFailure } from "./runtime";
 
@@ -82,6 +82,17 @@ export async function collectOnce(agyTimeoutMs = 10000): Promise<{ snapshot: Quo
     creditsLimit: snapshot.promptCreditsLimit,
     email: snapshot.email,
   });
+  recordCollectionAttempt({
+    success: true,
+    attemptedAt: new Date().toISOString(),
+    email: snapshot.email,
+    name: snapshot.name,
+    modelCount: snapshot.models.length,
+    promptCreditsUsed: snapshot.promptCreditsUsed,
+    promptCreditsLimit: snapshot.promptCreditsLimit,
+    flowCreditsUsed: snapshot.flowCreditsUsed,
+    flowCreditsLimit: snapshot.flowCreditsLimit,
+  });
 
   return { snapshot, recordId };
 }
@@ -102,6 +113,7 @@ export function startMonitor(cfg: MonitorConfig, onCollect?: () => void) {
     } catch (err: any) {
       appendLog("monitor", "error", `采集失败: ${err.message || String(err)}`);
       recordMonitorFailure(err.message || String(err));
+      recordCollectionAttempt({ success: false, attemptedAt: new Date().toISOString(), error: err.message || String(err) });
     } finally {
       scheduleNext();
     }

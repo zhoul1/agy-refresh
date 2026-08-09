@@ -98,6 +98,91 @@ export function initSchema(db: Database) {
     )
   `);
   db.run(`CREATE INDEX IF NOT EXISTS idx_daemon_executions_time ON daemon_executions(run_at)`);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS collection_attempts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      attempted_at TEXT NOT NULL,
+      success INTEGER NOT NULL,
+      error TEXT,
+      email TEXT,
+      name TEXT,
+      model_count INTEGER,
+      prompt_credits_used INTEGER,
+      prompt_credits_limit INTEGER,
+      flow_credits_used INTEGER,
+      flow_credits_limit INTEGER
+    )
+  `);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_collection_attempts_time ON collection_attempts(attempted_at)`);
+}
+
+export interface CollectionAttempt {
+  success: boolean;
+  attemptedAt?: string;
+  error?: string | null;
+  email?: string | null;
+  name?: string | null;
+  modelCount?: number | null;
+  promptCreditsUsed?: number | null;
+  promptCreditsLimit?: number | null;
+  flowCreditsUsed?: number | null;
+  flowCreditsLimit?: number | null;
+}
+
+export function recordCollectionAttempt(a: CollectionAttempt): void {
+  const db = getDb();
+  const at = a.attemptedAt || new Date().toISOString();
+  db.run(
+    `INSERT INTO collection_attempts (attempted_at, success, error, email, name, model_count, prompt_credits_used, prompt_credits_limit, flow_credits_used, flow_credits_limit)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      at,
+      a.success ? 1 : 0,
+      a.error ?? null,
+      a.email ?? null,
+      a.name ?? null,
+      a.modelCount ?? null,
+      a.promptCreditsUsed ?? null,
+      a.promptCreditsLimit ?? null,
+      a.flowCreditsUsed ?? null,
+      a.flowCreditsLimit ?? null,
+    ]
+  );
+}
+
+export interface CollectionAttemptRow {
+  time: string;
+  success: boolean;
+  error: string | null;
+  email: string | null;
+  name: string | null;
+  modelCount: number | null;
+  promptCreditsUsed: number | null;
+  promptCreditsLimit: number | null;
+  flowCreditsUsed: number | null;
+  flowCreditsLimit: number | null;
+}
+
+export function getCollectionAttempts(hours: number): CollectionAttemptRow[] {
+  const db = getDb();
+  const since = new Date(Date.now() - hours * 3600000).toISOString();
+  const rows = db.query(
+    `SELECT attempted_at, success, error, email, name, model_count,
+            prompt_credits_used, prompt_credits_limit, flow_credits_used, flow_credits_limit
+     FROM collection_attempts WHERE attempted_at >= ? ORDER BY attempted_at DESC`
+  ).all(since) as any[];
+  return rows.map((r) => ({
+    time: r.attempted_at,
+    success: r.success === 1,
+    error: r.error,
+    email: r.email,
+    name: r.name,
+    modelCount: r.model_count,
+    promptCreditsUsed: r.prompt_credits_used,
+    promptCreditsLimit: r.prompt_credits_limit,
+    flowCreditsUsed: r.flow_credits_used,
+    flowCreditsLimit: r.flow_credits_limit,
+  }));
 }
 
 export function saveSnapshot(snapshot: QuotaSnapshot): number {
