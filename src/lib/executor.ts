@@ -55,7 +55,7 @@ async function runWinAgyWithCapture(config: CommandConfig, timeoutMs: number): P
       stdio: ["ignore", "pipe", "pipe"],
     });
 
-    const timer = setTimeout(() => { didTimeout = true; child.kill(); }, timeoutMs);
+    const timer = setTimeout(() => { didTimeout = true; killProcessTree(child.pid); }, timeoutMs);
 
     const captured = await Promise.all([
       readStream(child.stdout ? Readable.toWeb(child.stdout) as ReadableStream : null),
@@ -101,6 +101,28 @@ function deduplicateTranscript(text: string): string {
   return result;
 }
 
+/**
+ * 跨平台杀掉进程及其整个子进程树。
+ *
+ * 关键修复：项目通过 PowerShell 包装脚本调用 `agy`，超时原本只 `child.kill()`
+ * 杀掉 powershell，而真正的 `agy.exe` 是它的子进程、不会被连带终止，于是变成
+ * 孤儿进程继续空转——当初就是它在那死循环狂开浏览器授权页、把浏览器刷爆。
+ * 用 `taskkill /T` 杀掉整条进程树即可不留孤儿。
+ */
+function killProcessTree(pid: number): void {
+  if (!pid) return;
+  if (process.platform === "win32") {
+    try {
+      spawn("taskkill", ["/T", "/F", "/PID", String(pid)], { windowsHide: true, stdio: "ignore" });
+    } catch { /* ignore */ }
+    try { process.kill(pid); } catch { /* ignore */ }
+  } else {
+    // 非 Windows：尽量杀掉进程组（需 spawn 时 detached），退而求其次杀掉直接子进程
+    try { process.kill(-pid, "SIGKILL"); } catch { /* ignore */ }
+    try { process.kill(pid, "SIGKILL"); } catch { /* ignore */ }
+  }
+}
+
 /** 常规 spawn 执行路径 */
 async function runSpawnCommand(config: CommandConfig, timeoutMs: number): Promise<CommandResult> {
   let stdoutText = "";
@@ -114,7 +136,7 @@ async function runSpawnCommand(config: CommandConfig, timeoutMs: number): Promis
       stderr: "pipe",
     });
 
-    const timer = setTimeout(() => { didTimeout = true; proc.kill(); }, timeoutMs);
+    const timer = setTimeout(() => { didTimeout = true; killProcessTree(proc.pid); }, timeoutMs);
 
     const captured = await Promise.all([
       readStream(proc.stdout),

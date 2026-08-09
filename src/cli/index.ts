@@ -112,8 +112,8 @@ async function main() {
   if (args.includes("--collect-now")) {
     const config = loadConfig(configPath);
     try {
-      const snapshot = await collectOnce(config.monitor.agyTimeoutMs);
-      console.log(`[CLI] 采集完成，记录了 ${snapshot.models.length} 个模型额度`);
+      const { snapshot, recordId } = await collectOnce(config.monitor.agyTimeoutMs);
+      console.log(`[CLI] 采集完成，记录了 ${snapshot.models.length} 个模型额度 (记录 #${recordId})`);
       if (snapshot.email) console.log(`[CLI] 账号: ${snapshot.email}`);
       for (const m of snapshot.models) {
         const pct = m.usedPercentage !== undefined ? m.usedPercentage.toFixed(1) : "?";

@@ -91,6 +91,18 @@ const LOCALE_DATA = {
     "scheduler.notYet": "尚未执行",
     "scheduler.history": "执行历史",
     "scheduler.historySub": "最近 100 条",
+    "scheduler.collect": "额度采集",
+    "scheduler.collectSub": "每 {{interval}} 分钟自动采集",
+    "scheduler.nextCollect": "下次采集",
+    "scheduler.lastCollect": "上次采集",
+    "scheduler.tabExec": "执行历史",
+    "scheduler.tabCollect": "采集历史",
+    "collect.time": "时间",
+    "collect.account": "账号",
+    "collect.modelCount": "模型数",
+    "collect.promptCredits": "Prompt Credits",
+    "collect.flowCredits": "Flow Credits",
+    "collect.noRecords": "暂无采集记录",
     "trends.24h": "24 小时",
     "trends.7d": "7 天",
     "trends.30d": "30 天",
@@ -297,6 +309,18 @@ const LOCALE_DATA = {
     "scheduler.notYet": "Not yet executed",
     "scheduler.history": "Execution History",
     "scheduler.historySub": "Last 100",
+    "scheduler.collect": "Quota Collection",
+    "scheduler.collectSub": "Auto every {{interval}} min",
+    "scheduler.nextCollect": "Next Collection",
+    "scheduler.lastCollect": "Last Collection",
+    "scheduler.tabExec": "Execution History",
+    "scheduler.tabCollect": "Collection History",
+    "collect.time": "Time",
+    "collect.account": "Account",
+    "collect.modelCount": "Models",
+    "collect.promptCredits": "Prompt Credits",
+    "collect.flowCredits": "Flow Credits",
+    "collect.noRecords": "No collection records yet",
     "trends.24h": "24 Hours",
     "trends.7d": "7 Days",
     "trends.30d": "30 Days",
@@ -451,6 +475,7 @@ const Store = {
   executionHistory: [],
   latestQuota: null,
   quotaHistory: [],
+  collectionHistory: [],
   imageGenLatest: [],
   imageGenHistory: [],
   models: [],
@@ -596,12 +621,13 @@ async function refreshExecutionHistory() {
 async function refreshConfig() {
   Store.config = await api.get("/api/config");
 }
-/** 模型所属池的排序键 Gemini=0 Claude=1 GPT-OSS=2 其他=3 */
+/** 模型所属池的排序键 Gemini=0 Claude=1 GPT=2 其他=3 */
 function poolOrderKey(id, display) {
   const lower = (id + " " + (display || "")).toLowerCase();
   if (lower.includes("gemini")) return 0;
   if (lower.includes("claude")) return 1;
-  return 2; // GPT-OSS / 其余
+  if (lower.includes("gpt") || lower.includes("oss")) return 2;
+  return 3; // 其余
 }
 
 async function refreshQuotaHistory(hours) {
@@ -619,6 +645,11 @@ async function refreshQuotaHistory(hours) {
   }
   Store.models.sort((a, b) => poolOrderKey(a.id, a.display) - poolOrderKey(b.id, b.display));
 }
+async function refreshCollectionHistory() {
+  try {
+    Store.collectionHistory = await api.get("/api/quota/history?hours=720");
+  } catch (e) { console.warn("collection history refresh failed", e); }
+}
 async function refreshLogs() {
   Store.logs = await api.get("/api/logs?limit=300");
 }
@@ -627,6 +658,32 @@ async function refreshImageGenLatest() {
 }
 async function refreshImageGenHistory(limit = 50) {
   try { Store.imageGenHistory = await api.get(`/api/image-gen/history?limit=${limit}`); } catch {}
+}
+
+/**
+ * 轮询执行记录直到完成（stderr 不再是"执行中..."），然后渲染并提示。
+ * @param executionId 新创建的执行记录 ID
+ * @param shouldRender 返回 boolean，判断当前是否应重新渲染（避免覆盖用户已切换的页面）
+ * @param renderFn 重新渲染函数
+ */
+function pollExecution(executionId, shouldRender, renderFn) {
+  if (!executionId) {
+    toast(t("toast.triggered"), "success");
+    return;
+  }
+  const checkInterval = setInterval(async () => {
+    await refreshExecutionHistory();
+    await refreshStatus();
+    if (shouldRender()) renderFn();
+
+    const exec = Store.executionHistory?.find((e) => e.id === executionId);
+    if (exec && exec.stderr !== "执行中...") {
+      clearInterval(checkInterval);
+      if (shouldRender()) renderFn();
+      toast(t("toast.triggered"), "success");
+    }
+  }, 2000);
+  setTimeout(() => clearInterval(checkInterval), 30000);
 }
 
 function renderTopbar() {
@@ -664,97 +721,75 @@ function updateCountdowns() {
   });
 }
 
-function renderOverview() {
+async function renderOverview() {
   const s = Store.status;
   const q = Store.latestQuota;
   const html = [];
 
-  html.push(`<div class="grid-4">
-    <div class="metric accent">
-      <div class="metric-label">${t("metric.nextTalk")}</div>
-      <div class="metric-value" data-cd="daemon-next">—</div>
-      <div class="metric-extra" data-cd="daemon-next-abs">—</div>
-    </div>
-    <div class="metric">
-      <div class="metric-label">${t("metric.nextQuota")}</div>
-      <div class="metric-value" data-cd="monitor-next">—</div>
-      <div class="metric-extra" data-cd="monitor-next-abs">—</div>
-    </div>
-    <div class="metric ${q?.credits?.limit && (q.credits.used / q.credits.limit) > 0.8 ? 'warn' : 'success'}">
-      <div class="metric-label">${t("metric.promptCredits")}</div>
-      <div class="metric-value">${q?.credits ? `${q.credits.remaining ?? "?"} <span style="font-size:16px;color:var(--text-3)">/ ${q.credits.limit ?? "?"}</span>` : "—"}</div>
-      <div class="metric-extra">${q?.credits?.used != null ? t("metric.used", { n: q.credits.used }) : t("metric.noData")} · ${escapeHtml(q?.planName || q?.email || "—")}</div>
-    </div>
-    <div class="metric ${q?.flowCredits?.limit && q.flowCredits.limit > 0 && (q.flowCredits.used / q.flowCredits.limit) > 0.8 ? 'warn' : 'success'}">
-      <div class="metric-label">${t("metric.flowCredits")}</div>
-      <div class="metric-value">${q?.flowCredits?.limit ? `${q.flowCredits.remaining ?? "?"} <span style="font-size:16px;color:var(--text-3)">/ ${q.flowCredits.limit ?? "?"}</span>` : "—"}</div>
-      <div class="metric-extra">${q?.flowCredits?.used != null ? t("metric.used", { n: q.flowCredits.used }) : t("metric.noData")}</div>
-    </div>
-  </div>`);
-
-  if (q?.googleOneAiCredits != null || q?.name) {
-    html.push(`<div class="grid-4" style="margin-bottom:16px">
-      <div class="metric">
-        <div class="metric-label">${t("metric.lastTalk")}</div>
-        <div class="metric-value" style="font-size:18px">${s?.daemon?.lastExecution ? fmtAgo(s.daemon.lastExecution.runAt) : "—"}</div>
-        <div class="metric-extra">${s?.daemon?.lastExecution ? (s.daemon.lastExecution.success ? '<span class="badge badge-success">' + t("badge.success") + '</span>' : '<span class="badge badge-danger">' + t("badge.fail") + '</span>') + (s.daemon.lastExecution.triggeredBy === "manual" ? " " + t("badge.manual") : " " + t("badge.auto")) : t("metric.notYet")}</div>
-      </div>
-      ${q?.googleOneAiCredits != null ? `<div class="metric"><div class="metric-label">${t("metric.googleOneAi")}</div><div class="metric-value">${q.googleOneAiCredits}</div></div>` : ""}
-      ${q?.name ? `<div class="metric"><div class="metric-label">${t("metric.accountName")}</div><div class="metric-value" style="font-size:18px">${escapeHtml(q.name)}</div></div>` : ""}
-    </div>`);
-  } else {
-    html.push(`<div class="grid-4">
-      <div class="metric">
-        <div class="metric-label">${t("metric.lastTalk")}</div>
-        <div class="metric-value" style="font-size:18px">${s?.daemon?.lastExecution ? fmtAgo(s.daemon.lastExecution.runAt) : "—"}</div>
-        <div class="metric-extra">${s?.daemon?.lastExecution ? (s.daemon.lastExecution.success ? '<span class="badge badge-success">' + t("badge.success") + '</span>' : '<span class="badge badge-danger">' + t("badge.fail") + '</span>') + (s.daemon.lastExecution.triggeredBy === "manual" ? " " + t("badge.manual") : " " + t("badge.auto")) : t("metric.notYet")}</div>
-      </div>
-    </div>`);
+  // ensure 7-day history is available for the trend chart
+  if (Store.quotaHistory.length === 0) {
+    try { await refreshQuotaHistory(168); } catch (e) { /* ignore */ }
   }
 
-  html.push(`<div class="action-bar" style="margin-bottom: 16px">
-    <button class="btn btn-primary" id="quickCollect">${t("btn.collectNow")}</button>
-    <button class="btn btn-success" id="quickRun">${t("btn.runNow")}</button>
-    <span style="color:var(--text-3);font-size:12px">${t("btn.shortcutHint")}</span>
+  // ── Hero: health gauge + provider usage ──
+  const credits = q?.credits;
+  const healthPct = credits?.limit ? Math.round((credits.remaining / credits.limit) * 100) : null;
+  const healthVal = healthPct != null ? healthPct : 0;
+  const healthLabel = healthPct == null ? "—" : healthPct >= 50 ? "健康" : healthPct >= 20 ? "偏低" : "紧张";
+  const pools = computePoolUsage(q);
+  html.push(`<div class="dash-hero">
+    <div class="card gauge-card">
+      <div class="card-title">额度健康度</div>
+      <div class="gauge-wrap">
+        ${gaugeSVG(healthVal)}
+        <div class="gauge-center">
+          <div class="gauge-pct">${healthPct != null ? healthPct + "%" : "—"}</div>
+          <div class="gauge-label">${healthLabel}</div>
+        </div>
+      </div>
+      <div class="gauge-info">
+        <div class="gauge-line"><span>Prompt 额度</span><span>${credits ? (credits.remaining ?? "?") + " / " + (credits.limit ?? "?") : "—"}</span></div>
+        <div class="gauge-line"><span>Flow 额度</span><span>${q?.flowCredits?.limit ? (q.flowCredits.remaining ?? "?") + " / " + q.flowCredits.limit : "—"}</span></div>
+        <div class="gauge-line"><span>上次对话</span><span>${s?.daemon?.lastExecution ? fmtAgo(s.daemon.lastExecution.runAt) : "—"}</span></div>
+      </div>
+    </div>
+    <div class="card provider-card">
+      <div class="card-title">Provider 用量</div>
+      <div class="provider-list">
+        ${providerRow("Claude", pools.Claude, "var(--provider-claude)")}
+        ${providerRow("Gemini", pools.Gemini, "var(--provider-gemini)")}
+        ${providerRow("GPT", pools.GPT, "var(--provider-gpt)")}
+      </div>
+    </div>
   </div>`);
 
-  if (q && q.models && q.models.length > 0) {
-    html.push(`<div class="card">
-      <div class="card-title">${t("quota.latestTitle")} <span class="card-title-sub">${q.time ? fmtTime(q.time, true) : ""} · ${escapeHtml(q.planName || q.email || "—")}</span></div>
-      <table class="model-table">
-        <thead><tr>
-          <th>${t("table.model")}</th><th>${t("table.displayName")}</th><th>${t("table.tag")}</th><th>${t("table.used")}</th><th>${t("table.remaining")}</th><th>${t("table.resetCountdown")}</th><th>${t("table.resetTime")}</th><th>${t("table.status")}</th>
-        </tr></thead>
-        <tbody>
-        ${q.models.map((m) => {
-          const countdown = m.resetTime ? fmtCountdown(m.resetTime) : "—";
-          const resetTime = m.resetTime ? fmtTime(m.resetTime, true) : "—";
-          const tag = m.tagTitle ? `<span class="badge badge-info">${escapeHtml(m.tagTitle)}</span>` : "—";
-          const hasQuotaData = m.usedPct != null || m.remainingPct != null;
-          const usedPct = m.usedPct != null ? Math.round(m.usedPct * 100) / 100 : 0;
-          const remainingPct = m.remainingPct != null ? Math.round(m.remainingPct * 100) / 100 : 0;
-          const quotaBar = (pct, cls) => hasQuotaData
-            ? `<div class="bar-cell"><div class="bar ${cls}" style="width:${pct}%"></div><span>${pct}%</span></div>`
-            : '<span style="color:var(--text-3)">—</span>';
-          return `<tr>
-            <td><span class="model-id">${escapeHtml(m.id.replace("MODEL_PLACEHOLDER_", ""))}</span></td>
-            <td class="model-name">${escapeHtml(m.display || "—")}</td>
-            <td>${tag}</td>
-            <td>${quotaBar(usedPct, "bar-used")}</td>
-            <td>${quotaBar(remainingPct, "bar-remaining")}</td>
-            <td class="countdown" data-cd-model="${escapeAttr(m.resetTime)}">${countdown}</td>
-            <td>${resetTime}</td>
-            <td>${m.exhausted ? '<span class="badge badge-danger">' + t("badge.exhausted") + '</span>' : '<span class="badge badge-success">' + t("badge.normal") + '</span>'}</td>
-          </tr>`;
-        }).join("")}
-        </tbody>
+  // ── Trend (7-day) ──
+  html.push(`<div class="card trend-card">
+    <div class="card-title">近 7 天额度消耗</div>
+    <div class="chart-container"><canvas id="overviewTrend"></canvas></div>
+  </div>`);
+
+  // ── Bottom: quick actions + system status ──
+  html.push(`<div class="dash-bottom">
+    <div class="card quick-actions">
+      <div class="card-title">快捷操作</div>
+      <div class="action-bar">
+        <button class="btn btn-primary" id="quickCollect">${t("btn.collectNow")}</button>
+        <button class="btn btn-success" id="quickRun">${t("btn.runNow")}</button>
+      </div>
+      <div class="metric-extra margin-top-md">${t("btn.shortcutHint")}</div>
+    </div>
+    <div class="card sys-status">
+      <div class="card-title">系统状态</div>
+      <table class="monitor-table">
+        <tr><td>定时调度</td><td>${s?.daemon?.running ? '<span class="badge badge-success">运行中</span>' : '<span class="badge badge-neutral">已停止</span>'}</td></tr>
+        <tr><td>监听队列</td><td>${s?.monitor?.running ? '<span class="badge badge-success">运行中</span>' : '<span class="badge badge-neutral">空闲</span>'}</td></tr>
+        <tr><td>最后错误</td><td>${s?.monitor?.lastError ? '<span class="badge badge-danger">' + escapeHtml(s.monitor.lastError) + '</span>' : '<span class="badge badge-success">无</span>'}</td></tr>
       </table>
-    </div>`);
-  } else {
-    html.push(`<div class="card"><div class="empty">${t("quota.noData")}</div></div>`);
-  }
+    </div>
+  </div>`);
 
-  // ── 图像生成额度 ───────────────────────────────
+  // ── 图像生成额度 ──
   const igLatest = Store.imageGenLatest || [];
   const igHistory = Store.imageGenHistory || [];
   html.push(`<div class="card">
@@ -782,7 +817,7 @@ function renderOverview() {
         }).join("")}
         </tbody>
       </table>`}
-    <div class="action-bar" style="margin-top:12px">
+    <div class="action-bar margin-top-md">
       <button class="btn btn-primary" id="imgGenTriggerBtn">${t("imagegen.triggerBtn")}</button>
       <button class="btn" id="imgGenReportBtn">${t("imagegen.manualBtn")}</button>
     </div>
@@ -810,23 +845,14 @@ function renderOverview() {
     </div>`);
   }
 
-  html.push(`<div class="grid-2">
-    <div class="card">
-      <div class="card-title">${t("exec.recent")}</div>
-      ${Store.executionHistory.length === 0 ? '<div class="empty">' + t("exec.noRecords") + '</div>' : renderExecutionRows(Store.executionHistory.slice(0, 5), true)}
-    </div>
-    <div class="card">
-      <div class="card-title">${t("monitor.status")}</div>
-      <table>
-        <tr><td style="color:var(--text-3)">${t("monitor.running")}</td><td>${s?.monitor?.running ? '<span class="badge badge-success">' + t("badge.yes") + '</span>' : '<span class="badge badge-neutral">' + t("badge.no") + '</span>'}</td></tr>
-        <tr><td style="color:var(--text-3)">${t("monitor.nextCollect")}</td><td><span data-cd="monitor-next">—</span> (${s?.monitor?.nextCollectAt ? fmtTime(s.monitor.nextCollectAt) : "—"})</td></tr>
-        <tr><td style="color:var(--text-3)">${t("monitor.lastCollect")}</td><td>${s?.monitor?.lastCollectionAt ? fmtAgo(s.monitor.lastCollectionAt) : "—"}</td></tr>
-        <tr><td style="color:var(--text-3)">${t("monitor.lastError")}</td><td>${s?.monitor?.lastError ? `<span class="badge badge-danger">${escapeHtml(s.monitor.lastError)}</span>` : "—"}</td></tr>
-      </table>
-    </div>
+  // ── Recent executions ──
+  html.push(`<div class="card">
+    <div class="card-title">${t("exec.recent")}</div>
+    ${Store.executionHistory.length === 0 ? '<div class="empty">' + t("exec.noRecords") + '</div>' : renderExecutionRows(Store.executionHistory.slice(0, 5), true)}
   </div>`);
 
   $("#content").innerHTML = html.join("");
+  drawOverviewTrend();
 
   $("#quickCollect").onclick = async () => {
     try {
@@ -843,39 +869,15 @@ function renderOverview() {
     try {
       toast(t("toast.executing"), "info");
       const result = await api.send("/api/scheduler/run-now", "POST");
-      const newExecutionId = result.execution?.id;
-      
-      // 立即刷新一次
       await refreshExecutionHistory();
       await refreshStatus();
       renderOverview();
-      
-      // 如果有新记录的 id，定时刷新直到记录更新
-      if (newExecutionId) {
-        const checkInterval = setInterval(async () => {
-          await refreshExecutionHistory();
-          renderOverview();
-          
-          // 检查记录是否已经更新（不再是“执行中...”）
-          const exec = Store.executionHistory?.find(e => e.id === newExecutionId);
-          if (exec && exec.stderr !== "执行中...") {
-            clearInterval(checkInterval);
-            await refreshStatus();
-            renderOverview();
-            toast(t("toast.triggered"), "success");
-          }
-        }, 2000);
-        
-        // 最多检查30秒
-        setTimeout(() => clearInterval(checkInterval), 30000);
-      } else {
-        toast(t("toast.triggered"), "success");
-      }
+      pollExecution(result.execution?.id, () => location.hash === "#overview" || location.hash === "", renderOverview);
     } catch (e) {
-      // 即使出错也继续执行下面的刷新
+      toast(t("toast.executeFail", { msg: e.message }), "error");
       await refreshExecutionHistory();
       await refreshStatus();
-      renderOverview();
+      if (location.hash === "#overview" || location.hash === "") renderOverview();
     }
   };
   bindExecutionRowToggles();
@@ -938,9 +940,96 @@ function openImageGenReportModal() {
   };
 }
 
+/* ── Command Center helpers (gauge / donut / provider / trend) ── */
+function gaugeSVG(pct) {
+  const r = 70, cx = 80, cy = 80;
+  const C = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(100, pct || 0));
+  const L = (v / 100) * C;
+  return `<svg class="health-gauge" viewBox="0 0 160 160" width="160" height="160">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eef1f6" stroke-width="14"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#6366f1" stroke-width="14" stroke-linecap="round" stroke-dasharray="${L.toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>
+  </svg>`;
+}
+function donutSVG(pct, color) {
+  const r = 16, cx = 22, cy = 22;
+  const C = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(100, pct || 0));
+  const L = (v / 100) * C;
+  return `<svg class="donut" viewBox="0 0 44 44" width="44" height="44">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#eef1f6" stroke-width="5"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="5" stroke-linecap="round" stroke-dasharray="${L.toFixed(2)} ${C.toFixed(2)}" transform="rotate(-90 ${cx} ${cy})"/>
+  </svg>`;
+}
+function providerRow(name, pct, color) {
+  const p = pct != null ? Math.round(pct) : 0;
+  return `<div class="provider-item">
+    ${donutSVG(pct != null ? pct : 0, color)}
+    <div class="provider-meta">
+      <div class="provider-name">${name}</div>
+      <div class="provider-val">${pct != null ? p + "% 剩余" : "— 无数据"}</div>
+    </div>
+    <div class="provider-track"><div class="provider-track-fill" style="width:${p}%;background:${color}"></div></div>
+  </div>`;
+}
+function computePoolUsage(q) {
+  const result = { Claude: null, Gemini: null, GPT: null, Other: null };
+  if (!q || !q.models) return result;
+  const sums = {}, counts = {};
+  for (const m of q.models) {
+    const pool = modelPoolName(m.id, m.display);
+    if (!sums[pool]) { sums[pool] = 0; counts[pool] = 0; }
+    // 优先用剩余百分比；额度已耗尽（exhausted）但无数值时按 0 处理
+    const rem = m.remainingPct != null ? m.remainingPct : (m.exhausted ? 0 : null);
+    if (rem != null) { sums[pool] += rem; counts[pool]++; }
+  }
+  for (const k of Object.keys(result)) result[k] = counts[k] ? sums[k] / counts[k] : null;
+  return result;
+}
+function drawOverviewTrend() {
+  const canvas = document.getElementById("overviewTrend");
+  if (!canvas) return;
+  if (Store.chartInstances["overviewTrend"]) Store.chartInstances["overviewTrend"].destroy();
+  const pools = {};
+  for (const m of Store.models) {
+    const p = modelPoolName(m.id, m.display);
+    if (!pools[p]) pools[p] = [];
+    pools[p].push(m);
+  }
+  const palette = { Claude: "#ef4444", Gemini: "#f59e0b", GPT: "#10b981", Other: "#6366f1" };
+  const datasets = Object.entries(pools).map(([pool, models]) => {
+    const values = Store.quotaHistory.map((d) => {
+      let sum = 0, c = 0;
+      for (const m of models) {
+        const mm = d.models.find((x) => x.id === m.id);
+        if (mm && mm.usedPct != null) { sum += mm.usedPct; c++; }
+      }
+      return c ? sum / c : null;
+    });
+    const color = palette[pool] || "#6366f1";
+    return { label: pool, data: values, borderColor: color, backgroundColor: color + "22", fill: true, tension: 0.35, spanGaps: true, pointRadius: 0, borderWidth: 2 };
+  });
+  const labels = Store.quotaHistory.map((d) => { const s = fmtTime(d.time); return s.length > 5 ? s.slice(5) : s; });
+  Store.chartInstances["overviewTrend"] = new Chart(canvas, {
+    type: "line",
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 }, color: "#6b7280" } },
+        tooltip: { mode: "index", intersect: false }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100, grid: { color: "#eef1f6" }, ticks: { callback: (v) => v + "%", color: "#9ca3af", font: { size: 11 } } },
+        x: { grid: { display: false }, ticks: { color: "#9ca3af", font: { size: 11 }, maxTicksLimit: 8 } }
+      }
+    }
+  });
+}
+
 function renderExecutionRows(rows, withLimit = false) {
   const limited = withLimit ? rows.slice(0, 5) : rows;
-  return `<table>
+  return `<div class="table-scroll"><table>
     <thead><tr>
       <th>${t("execTable.time")}</th><th>${t("execTable.trigger")}</th><th class="num">${t("execTable.duration")}</th><th>${t("execTable.result")}</th><th></th>
     </tr></thead>
@@ -950,11 +1039,11 @@ function renderExecutionRows(rows, withLimit = false) {
       <td>${r.triggeredBy === "manual" ? '<span class="badge badge-info">' + t("badge.manual") + '</span>' : '<span class="badge badge-neutral">' + t("badge.auto") + '</span>'}</td>
       <td class="num">${r.durationMs != null && r.durationMs > 0 ? r.durationMs + ' ms' : '—'}</td>
       <td><span class="badge ${badgeClassForStatus(r.success, r.stderr)}">${getStatusText(r.success, r.stderr)}</span></td>
-      <td><span style="color:var(--text-3);font-size:12px">${t("execTable.expand")}</span></td>
+      <td><span class="text-muted-sm">${t("execTable.expand")}</span></td>
     </tr>
     <tr class="execution-detail-row" data-detail-id="${r.id}"><td colspan="5">${renderExecutionDetail(r)}</td></tr>`).join("")}
     </tbody>
-  </table>`;
+  </table></div>`;
 }
 
 function renderExecutionDetail(r) {
@@ -993,16 +1082,19 @@ function handleExecutionRowClick(e) {
   }
 }
 
-function renderScheduler() {
+async function renderScheduler() {
   const s = Store.status;
+  const cfg = Store.config;
+  try { await refreshExecutionHistory(); } catch {}
+  try { await refreshCollectionHistory(); } catch {}
   const html = [];
   html.push(`<div class="card">
     <div class="card-title">${t("scheduler.title")} <span class="card-title-sub">${t("scheduler.desc", { interval: Store.config?.scheduler?.intervalMinutes ?? "—", start: Store.config?.scheduler?.startTime ?? "—", end: Store.config?.scheduler?.endTime ?? "—" })}</span></div>
     <div class="grid-3">
       <div>
         <div class="metric-label">${t("scheduler.status")}</div>
-        <div style="margin-top: 6px">${s?.daemon?.running ? '<span class="badge badge-success">' + t("scheduler.running") + '</span>' : '<span class="badge badge-neutral">' + t("scheduler.stopped") + '</span>'}</div>
-        <div class="action-bar" style="margin-top: 12px">
+        <div class="margin-top-sm">${s?.daemon?.running ? '<span class="badge badge-success">' + t("scheduler.running") + '</span>' : '<span class="badge badge-neutral">' + t("scheduler.stopped") + '</span>'}</div>
+        <div class="action-bar margin-top-md">
           ${s?.daemon?.running
             ? '<button class="btn btn-danger btn-sm" id="btnStopDaemon">' + t("scheduler.btnStop") + '</button>'
             : '<button class="btn btn-primary btn-sm" id="btnStartDaemon">' + t("scheduler.btnStart") + '</button>'}
@@ -1011,28 +1103,61 @@ function renderScheduler() {
       </div>
       <div>
         <div class="metric-label">${t("scheduler.nextRun")}</div>
-        <div class="metric-value" style="font-size: 22px" data-cd="daemon-next">—</div>
+        <div class="metric-value metric-value-md" data-cd="daemon-next">—</div>
         <div class="metric-extra" data-cd="daemon-next-abs">—</div>
       </div>
       <div>
         <div class="metric-label">${t("scheduler.lastRun")}</div>
         ${s?.daemon?.lastExecution ? `
-          <div style="margin-top: 6px">${fmtTime(s.daemon.lastExecution.runAt, true)} (${fmtAgo(s.daemon.lastExecution.runAt)})</div>
-          <div style="margin-top: 4px"><span class="badge ${badgeClassForStatus(s.daemon.lastExecution.success)}">${s.daemon.lastExecution.success ? t("badge.success") : t("badge.fail")}</span>
+          <div class="margin-top-sm">${fmtTime(s.daemon.lastExecution.runAt, true)} (${fmtAgo(s.daemon.lastExecution.runAt)})</div>
+          <div class="margin-top-sm"><span class="badge ${badgeClassForStatus(s.daemon.lastExecution.success)}">${s.daemon.lastExecution.success ? t("badge.success") : t("badge.fail")}</span>
           ${s.daemon.lastExecution.triggeredBy === 'manual' ? '<span class="badge badge-info" style="margin-left:4px">' + t("badge.manual") + '</span>' : '<span class="badge badge-neutral" style="margin-left:4px">' + t("badge.auto") + '</span>'}
-          ${s.daemon.lastExecution.durationMs != null ? `<span style="margin-left:6px;color:var(--text-3);font-size:12px">${s.daemon.lastExecution.durationMs} ms</span>` : ''}
+          ${s.daemon.lastExecution.durationMs != null ? `<span class="text-muted-sm" style="margin-left:6px">${s.daemon.lastExecution.durationMs} ms</span>` : ''}
           </div>
-        ` : '<div class="metric-extra" style="margin-top:6px">' + t("scheduler.notYet") + '</div>'}
+        ` : '<div class="metric-extra margin-top-sm">' + t("scheduler.notYet") + '</div>'}
       </div>
     </div>
   </div>`);
 
+  // ── Card 2: 额度采集 (monitor) — 自动采集倒计时 ──
   html.push(`<div class="card">
-    <div class="card-title">${t("scheduler.history")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>
-    ${Store.executionHistory.length === 0 ? '<div class="empty">' + t("exec.noRecords") + '</div>' : renderExecutionRows(Store.executionHistory)}
+    <div class="card-title">${t("scheduler.collect")} <span class="card-title-sub">${t("scheduler.collectSub", { interval: cfg?.monitor?.intervalMinutes ?? "—" })}</span></div>
+    <div class="grid-3">
+      <div>
+        <div class="metric-label">${t("scheduler.status")}</div>
+        <div class="margin-top-sm">${s?.monitor?.running ? '<span class="badge badge-success">' + t("scheduler.running") + '</span>' : '<span class="badge badge-neutral">' + t("scheduler.stopped") + '</span>'}</div>
+      </div>
+      <div>
+        <div class="metric-label">${t("scheduler.nextCollect")}</div>
+        <div class="metric-value metric-value-md" data-cd="monitor-next">—</div>
+        <div class="metric-extra" data-cd="monitor-next-abs">—</div>
+      </div>
+      <div>
+        <div class="metric-label">${t("scheduler.lastCollect")}</div>
+        <div class="margin-top-sm">${s?.monitor?.lastCollectionAt ? fmtTime(s.monitor.lastCollectionAt, true) + ' (' + fmtAgo(s.monitor.lastCollectionAt) + ')' : t("scheduler.notYet")}</div>
+        ${s?.monitor?.lastError ? '<div class="margin-top-sm"><span class="badge badge-danger">' + escapeHtml(s.monitor.lastError) + '</span></div>' : ''}
+      </div>
+    </div>
   </div>`);
 
+  // ── Tabs: 执行历史 / 采集历史 ──
+  html.push(`<div class="tabs-row" id="schedTabs">
+    <div class="tab active" data-tab="exec">${t("scheduler.tabExec")}</div>
+    <div class="tab" data-tab="collect">${t("scheduler.tabCollect")}</div>
+  </div>`);
+  html.push(`<div id="schedExecPanel">${renderExecHistoryPanel()}</div>`);
+  html.push(`<div id="schedCollectPanel" style="display:none">${renderCollectionHistory()}</div>`);
+
   $("#content").innerHTML = html.join("");
+
+  $$("#schedTabs .tab").forEach((tab) => {
+    tab.onclick = () => {
+      const which = tab.getAttribute("data-tab");
+      $$("#schedTabs .tab").forEach((t) => t.classList.toggle("active", t === tab));
+      $("#schedExecPanel").style.display = which === "exec" ? "" : "none";
+      $("#schedCollectPanel").style.display = which === "collect" ? "" : "none";
+    };
+  });
 
   const stopBtn = $("#btnStopDaemon");
   if (stopBtn) stopBtn.onclick = async () => {
@@ -1045,53 +1170,112 @@ function renderScheduler() {
     catch (e) { toast(t("toast.startFail", { msg: e.message }), "error"); }
   };
   $("#btnRunNow").onclick = async () => {
-    try { 
-      toast(t("toast.executing"), "info"); 
+    try {
+      toast(t("toast.executing"), "info");
       const result = await api.send("/api/scheduler/run-now", "POST");
-      const newExecutionId = result.execution?.id;
-      
-      // 立即刷新一次
-      await refreshStatus(); 
-      await refreshExecutionHistory(); 
+      await refreshStatus();
+      await refreshExecutionHistory();
       renderScheduler();
-      
-      // 如果有新记录 id，定时刷新直到更新
-      if (newExecutionId) {
-        const checkInterval = setInterval(async () => {
-          await refreshExecutionHistory();
-          await refreshStatus();
-          renderScheduler();
-          
-          const exec = Store.executionHistory?.find(e => e.id === newExecutionId);
-          if (exec && exec.stderr !== "执行中...") {
-            clearInterval(checkInterval);
-            renderScheduler();
-            toast(t("toast.triggered"), "success");
-          }
-        }, 2000);
-        
-        setTimeout(() => clearInterval(checkInterval), 30000);
-      } else {
-        toast(t("toast.triggered"), "success");
-      }
+      pollExecution(result.execution?.id, () => location.hash === "#scheduler", renderScheduler);
     } catch (e) {
-      // 即使出错也继续刷新
-      await refreshStatus(); 
-      await refreshExecutionHistory(); 
-      renderScheduler();
+      toast(t("toast.executeFail", { msg: e.message }), "error");
+      await refreshStatus();
+      await refreshExecutionHistory();
+      if (location.hash === "#scheduler") renderScheduler();
     }
   };
   bindExecutionRowToggles();
+}
+
+function renderExecHistoryPanel() {
+  if (Store.executionHistory.length === 0) return '<div class="card"><div class="empty">' + t("exec.noRecords") + '</div></div>';
+  return `<div class="card"><div class="card-title">${t("scheduler.history")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>${renderExecutionRows(Store.executionHistory)}</div>`;
+}
+
+function renderCollectionHistory() {
+  const list = Store.collectionHistory || [];
+  if (list.length === 0) return `<div class="card"><div class="empty">${t("collect.noRecords")}</div></div>`;
+  const rows = list.map((h) => {
+    const pc = h.credits || {};
+    const fc = h.flowCredits || {};
+    const models = h.models || [];
+    const acct = h.email || h.name || "—";
+    const pcStr = pc.used != null && pc.limit != null ? pc.used + " / " + pc.limit : "—";
+    const fcStr = fc.used != null && fc.limit != null ? fc.used + " / " + fc.limit : "—";
+    return `<tr>
+      <td>${fmtTime(h.time, true)}</td>
+      <td>${escapeHtml(acct)}</td>
+      <td class="num">${models.length}</td>
+      <td>${pcStr}</td>
+      <td>${fcStr}</td>
+    </tr>`;
+  }).join("");
+  return `<div class="card"><div class="card-title">${t("scheduler.tabCollect")} <span class="card-title-sub">${t("scheduler.historySub")}</span></div>
+    <div class="table-scroll"><table>
+      <thead><tr><th>${t("collect.time")}</th><th>${t("collect.account")}</th><th class="num">${t("collect.modelCount")}</th><th>${t("collect.promptCredits")}</th><th>${t("collect.flowCredits")}</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div></div>`;
 }
 
 function modelPoolName(id, display) {
   const lower = (id + " " + (display || "")).toLowerCase();
   if (lower.includes("gemini")) return "Gemini";
   if (lower.includes("claude")) return "Claude";
+  if (lower.includes("gpt") || lower.includes("oss")) return "GPT";
   return display || id.replace("MODEL_PLACEHOLDER_", "");
 }
 
-const POOL_COLORS = ["#2563eb", "#dc2626", "#16a34a", "#ca8a04", "#8b5cf6", "#0891b2"];
+function poolSparklineSVG(series, color) {
+  const w = 320, h = 64, pad = 4;
+  const avail = series.map((v, i) => ({ v, i })).filter((p) => p.v != null);
+  if (avail.length === 0) return `<div class="spark-empty">${t("metric.noData")}</div>`;
+  const n = series.length;
+  const xy = (p) => {
+    const x = n === 1 ? w / 2 : pad + (p.i / (n - 1)) * (w - 2 * pad);
+    const y = pad + (1 - p.v / 100) * (h - 2 * pad);
+    return [x, y];
+  };
+  const linePts = avail.map((p) => xy(p).join(",")).join(" ");
+  const first = xy(avail[0]);
+  const last = xy(avail[avail.length - 1]);
+  const areaPts = `${first[0].toFixed(1)},${(h - pad).toFixed(1)} ${linePts} ${last[0].toFixed(1)},${(h - pad).toFixed(1)}`;
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" width="100%" height="${h}">
+    <polygon points="${areaPts}" fill="${color}" fill-opacity="0.12"></polygon>
+    <polyline points="${linePts}" fill="none" stroke="${color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></polyline>
+  </svg>`;
+}
+
+function renderTrendsPoolSummary() {
+  const pools = {};
+  for (const m of Store.models) {
+    const p = modelPoolName(m.id, m.display);
+    (pools[p] = pools[p] || []).push(m);
+  }
+  const palette = { Claude: "#ef4444", Gemini: "#f59e0b", GPT: "#10b981", Other: "#6366f1" };
+  const cards = Object.keys(pools).map((pool) => {
+    const models = pools[pool];
+    const color = palette[pool] || "#6366f1";
+    const series = Store.quotaHistory.map((d) => {
+      let sum = 0, c = 0;
+      for (const m of models) {
+        const mm = d.models.find((x) => x.id === m.id);
+        if (mm && mm.usedPct != null) { sum += mm.usedPct; c++; }
+      }
+      return c ? sum / c : null;
+    });
+    const latestVals = series.filter((v) => v != null);
+    const pct = latestVals.length ? Math.round(latestVals[latestVals.length - 1]) : null;
+    return `<div class="trend-pool-card">
+      <div class="trend-pool-head">
+        <span class="trend-pool-dot" style="background:${color}"></span>
+        <span class="trend-pool-name">${escapeHtml(pool)}</span>
+        <span class="trend-pool-pct">${pct != null ? pct + "%" : "—"}</span>
+      </div>
+      ${poolSparklineSVG(series, color)}
+    </div>`;
+  }).join("");
+  return `<div class="trend-pool-grid">${cards}</div>`;
+}
 
 async function renderTrends() {
   await refreshQuotaHistory(Store.trendsHours);
@@ -1105,21 +1289,10 @@ async function renderTrends() {
   if (Store.quotaHistory.length === 0) {
     html.push(`<div class="card"><div class="empty">${t("trends.noData")}</div></div>`);
   } else {
-    const poolGroups = {};
-    for (const model of Store.models) {
-      const pool = modelPoolName(model.id, model.display);
-      if (!poolGroups[pool]) poolGroups[pool] = [];
-      poolGroups[pool].push(model);
-    }
-    let poolIdx = 0;
-    for (const [poolName, models] of Object.entries(poolGroups)) {
-      const chartId = "chartPool_" + poolName.replace(/[^a-zA-Z0-9_]/g, "_");
-      html.push(`<div class="card">
-        <div class="card-title">${escapeHtml(poolName)} ${t("trends.usagePct")}</div>
-        <div class="chart-container"><canvas id="${chartId}"></canvas></div>
-      </div>`);
-      poolIdx++;
-    }
+    html.push(`<div class="card">
+      <div class="card-title">${t("trends.usagePct")}</div>
+      ${renderTrendsPoolSummary()}
+    </div>`);
   }
 
   $("#content").innerHTML = html.join("");
@@ -1130,72 +1303,6 @@ async function renderTrends() {
       await refreshQuotaHistory(Store.trendsHours);
       renderTrends();
     };
-  });
-
-  if (Store.quotaHistory.length > 0) {
-    const poolGroups = {};
-    for (const model of Store.models) {
-      const pool = modelPoolName(model.id, model.display);
-      if (!poolGroups[pool]) poolGroups[pool] = [];
-      poolGroups[pool].push(model);
-    }
-    // 池内模型按显示名排序
-    for (const poolName of Object.keys(poolGroups)) {
-      poolGroups[poolName].sort((a, b) => (a.display || a.id).localeCompare(b.display || b.id));
-    }
-    let poolIdx = 0;
-    for (const [poolName, models] of Object.entries(poolGroups)) {
-      const chartId = "chartPool_" + poolName.replace(/[^a-zA-Z0-9_]/g, "_");
-      const datasets = models.map((model, mi) => {
-        const values = Store.quotaHistory.map(d => {
-          const m = d.models.find(m => m.id === model.id);
-          return m?.usedPct != null ? m.usedPct : null;
-        });
-        const color = POOL_COLORS[mi % POOL_COLORS.length];
-        return {
-          label: model.display || model.id.replace("MODEL_PLACEHOLDER_", ""),
-          data: values,
-          borderColor: color,
-          backgroundColor: color + "22",
-          fill: false,
-          tension: 0.3,
-          spanGaps: true,
-          pointRadius: values.length > 50 ? 0 : 3,
-        };
-      });
-      drawPoolChart(chartId, poolName, datasets);
-      poolIdx++;
-    }
-  }
-}
-
-function drawPoolChart(canvasId, poolName, datasets) {
-  const canvas = document.getElementById(canvasId);
-  if (!canvas) return;
-  const labels = Store.quotaHistory.map((d) => fmtTime(d.time));
-  if (Store.chartInstances[canvasId]) Store.chartInstances[canvasId].destroy();
-  const showLegend = datasets.length > 1 || datasets.some(d => d.label && d.label !== poolName);
-  Store.chartInstances[canvasId] = new Chart(canvas, {
-    type: "line",
-    data: { labels, datasets },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: showLegend, position: "bottom", labels: { boxWidth: 12, padding: 12, font: { size: 11 } } },
-        tooltip: {
-          mode: "index",
-          intersect: false,
-          callbacks: {
-            label: (ctx) => `${ctx.dataset.label}: ${ctx.parsed.y != null ? ctx.parsed.y.toFixed(1) + "%" : "—"}`,
-          },
-        },
-      },
-      scales: {
-        y: { beginAtZero: true, max: 100, grid: { color: "#e5e9f0" }, ticks: { callback: v => v + "%" } },
-        x: { grid: { display: false }, ticks: { maxTicksLimit: 10, color: "#9ca3af" } },
-      },
-    },
   });
 }
 
@@ -1311,7 +1418,7 @@ function renderSettings() {
     <div class="form-row">
       <div class="form-group" style="grid-column:1/-1">
         <label class="form-label">${t("settings.shareUrl")}</label>
-        <div style="display:flex;gap:8px">
+        <div class="flex-gap-sm" style="gap:8px">
           <input class="form-input" type="text" id="cfg-shareUrl" readonly style="flex:1" value="${t("settings.shareLoading")}">
           <button class="btn btn-primary" id="btnCopyUrl">${t("settings.shareCopy")}</button>
         </div>
@@ -1330,7 +1437,7 @@ function renderSettings() {
     </div>
   </div>`);
 
-  html.push(`<div class="action-bar" style="margin-bottom: 30px">
+  html.push(`<div class="action-bar settings-actions" style="margin-bottom: 30px">
     <button class="btn btn-primary" id="btnSaveConfig">${t("settings.save")}</button>
     <button class="btn" id="btnReloadConfig">${t("settings.reload")}</button>
     <button class="btn btn-ghost" id="btnResetConfig">${t("settings.reset")}</button>
@@ -1433,8 +1540,8 @@ function renderLogs() {
   const html = [];
   html.push(`<div class="card">
     <div class="card-title">${t("logs.title")} <span class="card-title-sub">${t("logs.sub")}</span></div>
-    <div class="action-bar" style="margin-bottom: 12px">
-      <label style="font-size: 12px; color: var(--text-3)">${t("logs.source")}</label>
+    <div class="action-bar log-filter" style="margin-bottom: 12px">
+      <label class="text-muted-sm">${t("logs.source")}</label>
       <select class="form-select" id="logSrc" style="width: 120px">
         <option value="all">${t("logs.all")}</option>
         <option value="daemon">daemon</option>
@@ -1442,7 +1549,7 @@ function renderLogs() {
         <option value="web">web</option>
         <option value="system">system</option>
       </select>
-      <label style="font-size: 12px; color: var(--text-3); margin-left: 8px">${t("logs.level")}</label>
+      <label class="text-muted-sm" style="margin-left: 8px">${t("logs.level")}</label>
       <select class="form-select" id="logLvl" style="width: 100px">
         <option value="all">${t("logs.all")}</option>
         <option value="error">error</option>
@@ -1557,6 +1664,7 @@ function connectSSE() {
     if (d.type === "collected") {
       refreshLatestQuota();
       refreshQuotaHistory(Store.trendsHours);
+      refreshCollectionHistory();
     } else if (d.type === "tick" || d.type === "start" || d.type === "stop" || d.type === "failed") {
       if (location.hash === "#overview") setRoute("overview");
     }
@@ -1637,11 +1745,24 @@ async function boot() {
   // Start with sidebar open by default (no state saved or unknown)
   // Only collapse if explicitly set in previous session
   const savedState = localStorage.getItem("agy-sidebar");
-  if (savedState === "collapsed") {
+  if (savedState === "collapsed" || window.innerWidth <= 600) {
     closeSidebar();
   } else {
     openSidebar();
   }
+
+  // 切换设备/缩放视口时，按宽度同步侧边栏状态（避免桌面缩到手机时抽屉盖住内容）
+  let _lastVpW = window.innerWidth;
+  let _vpTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(_vpTimer);
+    _vpTimer = setTimeout(() => {
+      const w = window.innerWidth;
+      if (_lastVpW > 600 && w <= 600) closeSidebar();
+      else if (_lastVpW <= 600 && w > 600) openSidebar();
+      _lastVpW = w;
+    }, 150);
+  });
 
   connectSSE();
   setInterval(async () => {

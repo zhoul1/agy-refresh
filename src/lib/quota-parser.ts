@@ -70,14 +70,21 @@ export function parseUserStatusToSnapshot(input: any): QuotaSnapshot {
       const modelOrAlias = m.modelOrAlias;
       const modelId = modelOrAlias?.model || "unknown";
       const quotaInfo = m.quotaInfo;
-      const remainingFraction = typeof quotaInfo?.remainingFraction === "number" ? quotaInfo.remainingFraction : undefined;
+      let remainingFraction = typeof quotaInfo?.remainingFraction === "number" ? quotaInfo.remainingFraction : undefined;
+      // 兼容后端有时直接返回百分比（如 80）而非小数（0.8）的场景
+      if (remainingFraction !== undefined && remainingFraction > 1) {
+        remainingFraction = remainingFraction / 100;
+      }
+      const hasQuotaInfo = !!(quotaInfo && typeof quotaInfo === "object");
+      const hasRemainingFraction = remainingFraction !== undefined;
       snapshot.models.push({
         modelId,
         displayName: m.label || undefined,
-        usedPercentage: remainingFraction !== undefined ? (1 - remainingFraction) * 100 : undefined,
-        remainingPercentage: remainingFraction !== undefined ? remainingFraction * 100 : undefined,
+        // 后端有 quotaInfo 但缺少 remainingFraction 时，视为额度已耗尽（如限时模型）
+        usedPercentage: hasRemainingFraction ? (1 - remainingFraction) * 100 : (hasQuotaInfo ? 100 : undefined),
+        remainingPercentage: hasRemainingFraction ? remainingFraction * 100 : (hasQuotaInfo ? 0 : undefined),
         resetTime: quotaInfo?.resetTime || undefined,
-        isExhausted: remainingFraction === 0,
+        isExhausted: hasRemainingFraction ? remainingFraction === 0 : hasQuotaInfo,
         tagTitle: m.tagTitle || undefined,
         tagDescription: m.tagDescription || undefined,
         supportsImages: m.supportsImages === true ? true : undefined,

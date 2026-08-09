@@ -262,14 +262,12 @@ export function getImageGenHistory(limit = 100): ImageGenQuotaRow[] {
 export function getImageGenLatestPerModel(): ImageGenQuotaRow[] {
   const db = getDb();
   return db.query(`
-    SELECT q1.*
-    FROM image_gen_quotas q1
-    JOIN (
-      SELECT model_id, MAX(observed_at) AS mx
+    SELECT * FROM (
+      SELECT *, ROW_NUMBER() OVER (PARTITION BY model_id ORDER BY observed_at DESC, id DESC) AS rn
       FROM image_gen_quotas
-      GROUP BY model_id
-    ) q2 ON q1.model_id = q2.model_id AND q1.observed_at = q2.mx
-    ORDER BY q1.model_id
+    )
+    WHERE rn = 1
+    ORDER BY model_id
   `).all() as ImageGenQuotaRow[];
 }
 
@@ -335,6 +333,9 @@ export function updateExecution(id: number, input: Partial<DaemonExecutionInput>
     sets.push("triggered_by = ?");
     params.push(input.triggeredBy ?? null);
   }
+  
+  // 没有可更新的字段时直接返回，避免生成非法 SQL
+  if (sets.length === 0) return;
   
   params.push(id);
   const stmt = db.prepare(`

@@ -25,6 +25,11 @@
           "quotaInfo": { "remainingFraction": 1.0, "resetTime": "2026-06-05T12:00:00Z" }
         },
         {
+          "label": "Exhausted Without Fraction",
+          "modelOrAlias": { "model": "MODEL_EXHAUSTED_NO_FRAC" },
+          "quotaInfo": { "resetTime": "2026-06-05T12:00:00Z" }
+        },
+        {
           "label": "No Quota Info Model",
           "modelOrAlias": { "model": "MODEL_NO_QUOTA" }
         },

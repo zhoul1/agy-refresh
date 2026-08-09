@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Bun-1.3%2B-black?logo=bun" alt="Bun">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-  <img src="https://img.shields.io/badge/tests-91_%E2%9C%94%EF%B8%8F-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-134_%E2%9C%94%EF%B8%8F-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/PRs-welcome-orange" alt="PRs Welcome">
 </p>
 
@@ -18,6 +18,24 @@
 **自动保持 AGy / antigravity / Codeium 的额度持续可用 —— 系统托盘彩色图标一眼看穿用量，手机远程随时查看仪表盘。**
 
 </div>
+
+---
+
+## ✨ 效果预览
+
+> 设计稿由 [Ardot](https://ardot.tencent.com/) 绘制，桌面 / 平板 / 手机三端自适应。
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-desktop.png" alt="桌面端仪表盘" width="760">
+  <br><sub>桌面端 · 额度健康度 + Provider 用量环 + 7 天趋势</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-tablet.png" alt="平板端仪表盘" width="460">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/dashboard-mobile.png" alt="手机端仪表盘" width="240">
+  <br><sub>平板端（左）· 手机端（右）</sub>
+</p>
 
 ---
 
@@ -52,7 +70,7 @@ AGy 的额度重置机制：**特定时间点有对话活动，就能解锁新�
 
 AGy Refresh 替你盯着：
 - 每天 08:00-23:30 自动发送对话请求
-- 失败自动重试 3 次，不错过任何窗口
+- 失败自动重试（最多 3 次），不错过任何窗口
 - 每 10 分钟采集一次额度，存入 SQLite 历史库
 
 > **装上就不管了。AI 额度永远新鲜。**
@@ -81,7 +99,7 @@ AGy Refresh 替你盯着：
 
 | 维度 | 开源项目平均 | AGy Refresh |
 |------|-------------|-------------|
-| 🧪 测试覆盖 | 多数无测试 | **91 个测试**，核心逻辑全覆盖 |
+| 🧪 测试覆盖 | 多数无测试 | **134 个测试**，核心逻辑全覆盖 |
 | 📦 依赖数量 | 平均 5-20 个 | **仅 1 个**（elysia），其余全是内置 |
 | 🚀 启动速度 | 秒级 | **毫秒级**，Bun 驱动 |
 | 💾 内存占用 | 50MB+ | **~50MB**，极致轻量 |
@@ -110,7 +128,7 @@ AGy Refresh 替你盯着：
 | ⚙️ **热重载** | 浏览器修改配置，保存即生效 |
 | 🔔 **SSE 推送** | 状态变更、采集结果、日志流实时推送到浏览器 |
 | 🌍 **i18n** | 中英双语，自动检测 + 一键切换 |
-| 🧪 **91 个测试** | 生产级质量，覆盖核心逻辑 |
+| 🧪 **134 个测试** | 生产级质量，覆盖核心逻辑 |
 
 ---
 
@@ -161,7 +179,7 @@ pm2 save
 
 | Tab | 内容 |
 |-----|------|
-| **总览** | 下次对话倒计时、Prompt/Flow Credits、最新模型额度表、快捷按钮 |
+| **总览** | 额度健康度仪表、Provider 用量环、近 7 天消耗趋势、快捷按钮 |
 | **调度** | 启停控制、下次执行倒计时、最近执行结果、完整历史 |
 | **趋势** | 按模型分组的使用率折线图，按池聚合（Gemini / Claude / GPT-OSS） |
 | **设置** | 可视化配置编辑器、系统托盘开关、局域网地址检测 |
@@ -238,17 +256,19 @@ bun test
 
 | 模块 | 测试数 | 覆盖范围 |
 |------|-------|---------|
-| 调度器 | 11 | 时刻边界、精确触发、跨日场景 |
+| 调度器 | 19 | 时刻边界、精确触发、跨日场景 |
 | 执行器 | 2 | 命令执行适配器 |
-| 额度解析 | 14 | AGy 额度 JSON 解析 |
+| 额度解析 | 17 | AGy 额度 JSON 解析（含 percentage/fraction 兼容） |
 | 进程检测 | 10 | 参数提取与评分 |
-| 数据库 | 6 | SQLite CRUD + 幂等性 |
+| 数据库 | 8 | SQLite CRUD + 幂等性 |
 | 执行历史 | 6 | 执行记录持久化 |
-| 配置保存 | 10 | 校验 + 原子写入 |
+| 配置保存 | 18 | 校验 + 原子写入 |
 | 运行时 | 11 | 单例 + EventEmitter + 缓冲区 |
 | Connect RPC | 6 | RPC 客户端 + 集成 |
 | Web API | 17 | REST 路由 + SSE + 静态文件 |
-| **合计** | **91** | **全部绿灯** |
+| 图像生成额度 | 15 | 429 / 成功响应解析与字段提取 |
+| 图像生成触发 | 5 | 本地 RPC / 自定义端点 / Bearer Token |
+| **合计** | **134** | **全部绿灯** |
 
 ---
 

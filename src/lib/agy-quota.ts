@@ -3,6 +3,7 @@ import http from "http";
 import type { AgyProcessInfo } from "./agy-process";
 import type { QuotaSnapshot } from "./quota-parser";
 import { parseUserStatusToSnapshot } from "./quota-parser";
+import { appendLog } from "./runtime";
 
 const CONNECT_RPC_PATH = "/exa.language_server_pb.LanguageServerService/GetUnleashData";
 // Accept 200 (success), 400 (bad request but Connect RPC understood), 401 (needs auth)
@@ -141,7 +142,7 @@ export async function collectQuota(
   portTokenMap?: Map<number, string>,
 ): Promise<QuotaSnapshot> {
   ports = ports.length > 0 ? ports : (processInfo.port ? [processInfo.port] : []);
-  console.log(`[Quota] Probing ports: ${ports.join(", ")}`);
+  appendLog("quota", "info", `Probing ports: ${ports.join(", ")}`);
 
   let endpoint: { baseUrl: string; csrfToken?: string } | null = null;
 
@@ -161,7 +162,7 @@ export async function collectQuota(
     );
   }
 
-  console.log(`[Quota] Found Connect API at ${endpoint.baseUrl}${endpoint.csrfToken ? " (with token)" : ""}`);
+  appendLog("quota", "info", `Found Connect API at ${endpoint.baseUrl}${endpoint.csrfToken ? " (with token)" : ""}`);
   const response = await callGetUserStatus(endpoint.baseUrl, endpoint.csrfToken);
   return parseUserStatusToSnapshot(response);
 }

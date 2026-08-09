@@ -31,7 +31,7 @@ function buildPortTokenMap(allProcesses: AgyProcessInfo[], allPids: number[]): M
   return portTokenMap;
 }
 
-export async function collectOnce(agyTimeoutMs = 10000): Promise<QuotaSnapshot> {
+export async function collectOnce(agyTimeoutMs = 10000): Promise<{ snapshot: QuotaSnapshot; recordId: number }> {
   appendLog("monitor", "info", `开始探测 agy 进程...`);
   const allProcesses = await detectAllAgyProcesses();
   if (allProcesses.length === 0) {
@@ -83,7 +83,7 @@ export async function collectOnce(agyTimeoutMs = 10000): Promise<QuotaSnapshot> 
     email: snapshot.email,
   });
 
-  return snapshot;
+  return { snapshot, recordId };
 }
 
 export function startMonitor(cfg: MonitorConfig, onCollect?: () => void) {
@@ -97,7 +97,7 @@ export function startMonitor(cfg: MonitorConfig, onCollect?: () => void) {
 
   async function tick() {
     try {
-      const snapshot = await collectOnce(cfg.agyTimeoutMs);
+      await collectOnce(cfg.agyTimeoutMs);
       onCollect?.();
     } catch (err: any) {
       appendLog("monitor", "error", `采集失败: ${err.message || String(err)}`);

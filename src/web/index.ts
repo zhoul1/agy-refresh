@@ -122,6 +122,7 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
       command: { ...current.command, ...(incoming.command || {}) },
       monitor: { ...current.monitor, ...(incoming.monitor || {}) },
       web: { ...current.web, ...(incoming.web || {}) },
+      imageGen: { ...current.imageGen, ...(incoming.imageGen || {}) },
     };
     const valid = saveConfig(merged, configPath);
     if (valid.web.trayEnabled) {
@@ -215,8 +216,8 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
 
   app.post("/api/monitor/collect-now", async ({ set }) => {
     try {
-      const snapshot = await collectOnce();
-      return { ok: true, models: snapshot.models.length, email: snapshot.email, recordId: null };
+      const { snapshot, recordId } = await collectOnce();
+      return { ok: true, models: snapshot.models.length, email: snapshot.email, recordId };
     } catch (e: any) {
       set.status = 500;
       return { error: e.message || String(e) };
@@ -365,6 +366,7 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
     set.headers["connection"] = "keep-alive";
     set.headers["x-accel-buffering"] = "no";
 
+    let cleanup: (() => void) | null = null;
     const stream = new ReadableStream({
       start(controller) {
         const enc = new TextEncoder();
@@ -395,14 +397,13 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
           try { controller.enqueue(enc.encode(`: heartbeat\n\n`)); } catch {}
         }, 15000);
 
-        (controller as any)._cleanup = () => {
+        cleanup = () => {
           clearInterval(heartbeat);
           for (const [name, h] of handlers) offEvent(name as any, h as any);
         };
       },
       cancel(reason) {
-        const cleanup = (this as any)._cleanup;
-        if (typeof cleanup === "function") cleanup();
+        cleanup?.();
       },
     });
 

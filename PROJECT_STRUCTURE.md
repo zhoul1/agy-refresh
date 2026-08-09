@@ -25,30 +25,34 @@
 - `src/`
      - `cli/`
       - `index.ts` - CLI 入口：`--all` / `--serve-only` / `--daemon-only` / `--monitor-only` / `--once` / `--collect-now` / `--report-image-gen <file|->` / `--trigger-image-gen`，统一注册运行时工厂并启动 web
-   - `lib/`
-      - `config.ts` - 配置文件加载、校验、保存（`loadConfig` / `validateConfig` / `saveConfig` / `ConfigValidationError`，含 `imageGen` 出图配置）
-      - `image-gen-quota.ts` - 解析 Google 图像生成 429 限流错误 JSON / 成功上报对象 → `ImageGenQuotaSnapshot`（纯函数）
-      - `image-gen-trigger.ts` - 真正触发图像生成：探测本地 AGy / 调用可配置端点（endpoint + Bearer Token），读返回并解析（DI 可测）
+  - `lib/`
+    - `config.ts` - 配置文件加载、校验、保存（`loadConfig` / `validateConfig` / `saveConfig` / `ConfigValidationError`，含 `imageGen` 出图配置）
+    - `image-gen-quota.ts` - 解析 Google 图像生成 429 限流错误 JSON / 成功上报对象 → `ImageGenQuotaSnapshot`（纯函数）
+    - `image-gen-trigger.ts` - 真正触发图像生成：探测本地 AGy / 调用可配置端点（endpoint + Bearer Token），读返回并解析（DI 可测）
     - `scheduler.ts` - 定时时间计算逻辑（纯函数）
     - `executor.ts` - 本地 agy CLI 调用适配器
     - `daemon.ts` - 守护进程循环：定时调度 + 执行历史落库 + 手动单次触发（`runDaemonOnce`）
     - `agy-process.ts` - 检测 antigravity 语言服务器进程，提取 pid / csrf_token / port（含 extractArg / scoreCandidate 纯函数）
     - `agy-quota.ts` - Connect RPC 客户端，探测端口并调用 GetUserStatus 获取额度（export callGetUserStatus 支持 DI）
-    - `quota-parser.ts` - 解析 Connect RPC JSON 响应 → QuotaSnapshot（纯函数，无可测试）
+    - `quota-parser.ts` - 解析 Connect RPC JSON 响应 → QuotaSnapshot（纯函数，兼容 fraction 与 percentage 两种格式）
     - `database.ts` - SQLite 建表与 CRUD（`quota_records` + `model_quotas` + `daemon_executions` + `image_gen_quotas`），env 可配置测试路径
     - `collector.ts` - 采集协调器，全端口探测 + port→token 映射 + 定时循环
     - `runtime.ts` - 进程内单例运行时：daemon/monitor 句柄、EventEmitter、500 条环形日志 buffer、状态查询
+    - `tray.ts` - 启动 / 停止 Windows 系统托盘进程（PowerShell 脚本包装）
   - `web/`
-        - `index.ts` - Elysia REST API + 静态文件服务：`/api/status` `/api/config` `/api/scheduler/*` `/api/monitor/*` `/api/quota/*` `/api/image-gen/*`(report|latest|history|trigger) `/api/logs` `/api/events` (SSE)
+    - `index.ts` - Elysia REST API + 静态文件服务：`/api/status` `/api/config` `/api/scheduler/*` `/api/monitor/*` `/api/quota/*` `/api/image-gen/*`(report|latest|history|trigger) `/api/logs` `/api/events` (SSE)
     - `static/`
       - `index.html` - 单页应用入口（左侧栏 + 顶部状态栏 + 主内容区）
       - `style.css` - 白色主题样式（CSS 变量驱动，响应式布局）
       - `app.js` - 前端逻辑：hash 路由、5 个 Tab 渲染、SSE 实时推送、Chart.js 折线图、表单编辑
+  - `tray/`
+    - `tray.ps1` - Windows 通知区域托盘图标与右键菜单（按 Gemini / Claude / GPT 分组显示额度百分比）
 - `tests/`
   - `scheduler.test.ts` - 调度器核心逻辑测试（19 tests）：`getNextRunTime` + `getNextRollingRunTime` + `isValidTimeFormat` + `parseTimeToMinutes`
   - `executor.test.ts` - 命令行调用适配器测试（2 tests）
-   - `quota-parser.test.ts` - `parseUserStatusToSnapshot` 纯函数测试（14 tests，基于真实 fixture）
-   - `image-gen-quota.test.ts` - `parseImageGenQuota` 纯函数测试（13 tests，基于真实 fixture）
+   - `quota-parser.test.ts` - `parseUserStatusToSnapshot` 纯函数测试（16 tests，基于真实 fixture）
+   - `image-gen-quota.test.ts` - `parseImageGenQuota` 纯函数测试（15 tests，基于真实 fixture）
+   - `image-gen-trigger.test.ts` - `triggerImageGen` 触发/端点/错误处理测试（5 tests）
   - `process-detector.test.ts` - `extractArg` / `scoreCandidate` 纯函数测试（10 tests）
   - `database.test.ts` - SQLite CRUD + 幂等性测试（6 tests，基于真实 fixture 数据）
   - `daemon-executions.test.ts` - `daemon_executions` 表 CRUD 测试（6 tests）

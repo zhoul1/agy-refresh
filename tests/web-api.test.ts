@@ -48,7 +48,7 @@ beforeAll(async () => {
     scheduler: { startTime: "00:00", endTime: "23:59", intervalMinutes: 30 },
     command: { executable: FAST_EXECUTABLE, args: FAST_ARGS },
     monitor: { intervalMinutes: 1, agyTimeoutMs: 1000 },
-    web: { port: 3000, host: "127.0.0.1" },
+    web: { port: 3000, host: "127.0.0.1", trayEnabled: false },
   }, CFG_PATH);
 
   process.env.__TEST_DB_PATH = ":memory:";

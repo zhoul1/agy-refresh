@@ -5,7 +5,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Bun-1.3%2B-black?logo=bun" alt="Bun">
   <img src="https://img.shields.io/badge/license-MIT-blue" alt="License">
-  <img src="https://img.shields.io/badge/tests-91_%E2%9C%94%EF%B8%8F-brightgreen" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-134_%E2%9C%94%EF%B8%8F-brightgreen" alt="Tests">
   <img src="https://img.shields.io/badge/PRs-welcome-orange" alt="PRs Welcome">
 </p>
 
@@ -21,11 +21,29 @@
 
 ---
 
+## ✨ Preview
+
+> Design drafts created with [Ardot](https://ardot.tencent.com/) — responsive across desktop / tablet / phone.
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-desktop.png" alt="Desktop dashboard" width="760">
+  <br><sub>Desktop · quota health gauge + provider usage rings + 7-day trend</sub>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/dashboard-tablet.png" alt="Tablet dashboard" width="460">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/dashboard-mobile.png" alt="Mobile dashboard" width="240">
+  <br><sub>Tablet (left) · Mobile (right)</sub>
+</p>
+
+---
+
 ## Three Killer Features
 
 ### 1. 🪟 System Tray Icon — More Intuitive Than a Battery Indicator
 
-A常驻 icon in your notification area with colors that change by usage:
+A persistent icon in your notification area with colors that change by usage:
 
 - 🟢 **Green** — Plenty of credits, go wild
 - 🟠 **Orange** — Half used, pace yourself
@@ -63,10 +81,10 @@ AGy Refresh handles it:
 
 | Dimension | Open Source Average | AGy Refresh |
 |-----------|-------------------|-------------|
-| 🧪 Test Coverage | Most have none | **91 tests**, core logic fully covered |
+| 🧪 Test Coverage | Most have none | **134 tests**, core logic fully covered |
 | 📦 Dependencies | Avg 5-20 packages | **Just 1** (elysia), rest are built-ins |
 | 🚀 Startup Speed | Seconds | **Milliseconds**, powered by Bun |
-| 💾 Memory Footprint | 50MB+ | **~50MB**,极致 lightweight |
+| 💾 Memory Footprint | 50MB+ | **~50MB**, lightweight |
 | 🔒 Privacy | Some use cloud | **100% local**, data never leaves your PC |
 | 🌍 Internationalization | EN only | **EN/ZH bilingual**, works out of the box |
 | ⚙️ Config Experience | Edit config files | **Web UI visual editor**, hot-reload |
@@ -110,7 +128,7 @@ Others still worrying about credits running out → your AI credits never run dr
 | ⚙️ **Hot-Reload** | Edit config via UI, changes apply instantly |
 | 🔔 **SSE Push** | Real-time status, logs, and events streamed to browser |
 | 🌍 **i18n** | English / Chinese, auto-detect + one-click toggle |
-| 🧪 **91 Tests** | Production-grade quality, core logic covered |
+| 🧪 **134 Tests** | Production-grade quality, core logic covered |
 
 ---
 
@@ -161,7 +179,7 @@ pm2 save
 
 | Tab | What You See |
 |-----|--------------|
-| **Overview** | Next talk countdown, Prompt/Flow Credits, latest model quotas, quick action buttons |
+| **Overview** | Quota health gauge, provider usage rings, 7-day trend, quick action buttons |
 | **Scheduler** | Start/stop daemon, next run countdown, last execution result, full history |
 | **Trends** | Per-model usage line charts grouped by pool (Gemini / Claude / GPT-OSS) |
 | **Settings** | Visual config editor, system tray toggle, share link detection |
@@ -238,17 +256,19 @@ bun test
 
 | Module | Tests | Coverage |
 |--------|-------|----------|
-| Scheduler | 11 | Time boundaries, exact triggers, cross-day |
+| Scheduler | 19 | Time boundaries, exact triggers, cross-day |
 | Executor | 2 | Command execution adapter |
-| Quota Parser | 14 | AGy quota JSON parsing |
+| Quota Parser | 17 | AGy quota JSON parsing (percentage/fraction compat) |
 | Process Detector | 10 | Parameter extraction & scoring |
-| Database | 6 | SQLite CRUD + idempotence |
+| Database | 8 | SQLite CRUD + idempotence |
 | Daemon Executions | 6 | Execution history persistence |
-| Config Save | 10 | Validation + atomic writes |
+| Config Save | 18 | Validation + atomic writes |
 | Runtime | 11 | Singleton + EventEmitter + Buffer |
 | Connect RPC | 6 | RPC client + integration |
 | Web API | 17 | REST routes + SSE + static files |
-| **Total** | **91** | **All green** |
+| Image-Gen Quota | 15 | 429 / success response parsing & field extraction |
+| Image-Gen Trigger | 5 | Local RPC / custom endpoint / Bearer Token |
+| **Total** | **134** | **All green** |
 
 ---
 

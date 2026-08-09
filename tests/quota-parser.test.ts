@@ -34,12 +34,12 @@ describe("parseUserStatusToSnapshot", () => {
     expect(flash!.isExhausted).toBe(false);
   });
 
-  it("should parse model without remainingFraction", () => {
+  it("should parse model with remainingFraction correctly", () => {
     const claude = snapshot.models.find((m) => m.modelId === "MODEL_PLACEHOLDER_M35");
     expect(claude).toBeDefined();
     expect(claude!.displayName).toBe("Claude Sonnet 4.6 (Thinking)");
-    expect(claude!.usedPercentage).toBeUndefined();
-    expect(claude!.remainingPercentage).toBeUndefined();
+    expect(claude!.usedPercentage).toBeCloseTo(80, 0);
+    expect(claude!.remainingPercentage).toBeCloseTo(20, 0);
     expect(claude!.isExhausted).toBe(false);
   });
 
@@ -59,6 +59,14 @@ describe("parseUserStatusToSnapshot", () => {
       expect(exhausted!.usedPercentage).toBe(100);
       expect(exhausted!.remainingPercentage).toBe(0);
       expect(exhausted!.isExhausted).toBe(true);
+    });
+
+    it("should mark model with quotaInfo but no remainingFraction as exhausted", () => {
+      const exhaustedNoFrac = edgeSnapshot.models.find((m) => m.modelId === "MODEL_EXHAUSTED_NO_FRAC");
+      expect(exhaustedNoFrac).toBeDefined();
+      expect(exhaustedNoFrac!.usedPercentage).toBe(100);
+      expect(exhaustedNoFrac!.remainingPercentage).toBe(0);
+      expect(exhaustedNoFrac!.isExhausted).toBe(true);
     });
 
     it("should handle full quota (remainingFraction=1)", () => {
@@ -89,6 +97,50 @@ describe("parseUserStatusToSnapshot", () => {
       expect(edgeSnapshot.promptCreditsUsed).toBe(100000);
       expect(edgeSnapshot.promptCreditsRemaining).toBe(0);
       expect(edgeSnapshot.promptCreditsLimit).toBe(100000);
+    });
+  });
+
+  describe("percentage format compatibility", () => {
+    it("should normalize remainingFraction when given as percentage (50)", () => {
+      const response = {
+        userStatus: {
+          cascadeModelConfigData: {
+            clientModelConfigs: [
+              {
+                label: "Half Used Model",
+                modelOrAlias: { model: "MODEL_PCT_HALF" },
+                quotaInfo: { remainingFraction: 50 },
+              },
+            ],
+          },
+        },
+      };
+      const result = parseUserStatusToSnapshot(response);
+      const half = result.models.find((m) => m.modelId === "MODEL_PCT_HALF");
+      expect(half).toBeDefined();
+      expect(half!.usedPercentage).toBe(50);
+      expect(half!.remainingPercentage).toBe(50);
+    });
+
+    it("should leave fraction format (0.5) unchanged", () => {
+      const response = {
+        userStatus: {
+          cascadeModelConfigData: {
+            clientModelConfigs: [
+              {
+                label: "Half Used Fraction",
+                modelOrAlias: { model: "MODEL_FRAC_HALF" },
+                quotaInfo: { remainingFraction: 0.5 },
+              },
+            ],
+          },
+        },
+      };
+      const result = parseUserStatusToSnapshot(response);
+      const half = result.models.find((m) => m.modelId === "MODEL_FRAC_HALF");
+      expect(half).toBeDefined();
+      expect(half!.usedPercentage).toBe(50);
+      expect(half!.remainingPercentage).toBe(50);
     });
   });
 

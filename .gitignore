@@ -42,3 +42,6 @@ output.txt
 
 # PM2 logs
 logs/
+
+# Local WorkBuddy project memory/state (per-machine, not for VCS)
+.workbuddy/

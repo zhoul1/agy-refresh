@@ -12,14 +12,50 @@ export function setTrayApiUrl(url: string) {
   trayApiUrl = url;
 }
 
+/**
+ * Windows 对环境块大小有限制。测试/开发环境下若父进程环境变量过大，
+ * 直接继承会导致 PowerShell 子进程启动失败。此处保留系统关键变量并丢弃
+ * 过长变量，确保托盘进程能稳定启动。
+ */
+function buildTrayEnv(): NodeJS.ProcessEnv {
+  const essential = new Set([
+    "SYSTEMROOT", "WINDIR", "PATH", "PATHEXT", "TMP", "TEMP",
+    "USERPROFILE", "APPDATA", "LOCALAPPDATA", "ProgramFiles",
+    "ProgramFiles(x86)", "CommonProgramFiles", "CommonProgramFiles(x86)",
+    "NUMBER_OF_PROCESSORS", "OS", "COMPUTERNAME", "USERDOMAIN",
+    "USERDOMAIN_ROAMINGPROFILE", "HOMEDRIVE", "HOMEPATH", "HOME",
+    "ALLUSERSPROFILE", "PUBLIC", "SystemDrive", "ComSpec", "PSModulePath",
+  ]);
+
+  const env: NodeJS.ProcessEnv = {};
+  let total = 0;
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value === undefined) continue;
+    // 保留系统关键变量和值较短的自定义变量
+    if (essential.has(key) || value.length < 512) {
+      env[key] = value;
+      total += key.length + value.length + 2; // key=value\0
+    }
+  }
+
+  // 即使如此仍超出安全阈值，只保留系统关键变量
+  if (total > 60000) {
+    for (const key of Object.keys(env)) {
+      if (!essential.has(key)) delete env[key];
+    }
+  }
+  return env;
+}
+
 export function startTray(): boolean {
+  if (process.platform !== "win32") return false;
   if (trayProcess) return false;
   trayProcess = spawn("powershell", [
     "-WindowStyle", "Hidden",
     "-ExecutionPolicy", "Bypass",
     "-File", TRAY_SCRIPT,
     "-ApiUrl", trayApiUrl,
-  ], { windowsHide: false, stdio: ["ignore", "pipe", "pipe"] });
+  ], { windowsHide: true, stdio: ["ignore", "pipe", "pipe"], env: buildTrayEnv() });
 
   trayProcess.stdout?.on("data", (data) => {
     console.log(`[TRAY] ${data.toString().trim()}`);

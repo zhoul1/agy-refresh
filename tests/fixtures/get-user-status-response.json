@@ -42,17 +42,17 @@
         {
           "label": "Claude Sonnet 4.6 (Thinking)",
           "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M35" },
-          "quotaInfo": { "resetTime": "2026-06-04T21:23:05Z" }
+          "quotaInfo": { "remainingFraction": 0.2, "resetTime": "2026-06-04T21:23:05Z" }
         },
         {
           "label": "Claude Opus 4.6 (Thinking)",
           "modelOrAlias": { "model": "MODEL_PLACEHOLDER_M26" },
-          "quotaInfo": { "resetTime": "2026-06-04T21:23:05Z" }
+          "quotaInfo": { "remainingFraction": 0.2, "resetTime": "2026-06-04T21:23:05Z" }
         },
         {
           "label": "GPT-OSS 120B (Medium)",
           "modelOrAlias": { "model": "MODEL_OPENAI_GPT_OSS_120B_MEDIUM" },
-          "quotaInfo": { "resetTime": "2026-06-04T21:23:05Z" }
+          "quotaInfo": { "remainingFraction": 0.2, "resetTime": "2026-06-04T21:23:05Z" }
         }
       ]
     }

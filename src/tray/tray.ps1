@@ -97,19 +97,28 @@ function BuildMenu($Status, $Quota) {
             if ($lower -match "gemini") { $pool = "Gemini" }
             elseif ($lower -match "claude") { $pool = "Claude" }
             elseif ($lower -match "gpt|oss") { $pool = "GPT" }
-            
-            if (-not $poolMap.ContainsKey($pool)) { $poolMap[$pool] = @{} }
+
+            if (-not $poolMap.ContainsKey($pool)) { $poolMap[$pool] = @() }
             $name = if ($mod.display -and $mod.display.Length -gt 0) { $mod.display } else { $mod.id }
-            $pct = if ($mod.usedPct -ne $null) { "$([math]::Round($mod.usedPct * 100, 1))%" } else { "?" }
+            # remainingPct 已经是 0-100 的百分比，直接显示，不要再乘 100
+            $pct = if ($mod.remainingPct -ne $null) {
+                "$([math]::Round($mod.remainingPct, 1))%"
+            } elseif ($mod.exhausted) {
+                "0%"
+            } else {
+                "—"
+            }
             $sym = if ($mod.exhausted) { " X" } else { "" }
-            $poolMap[$pool]["$name"] = "$pct$sym"
+            $poolMap[$pool] += [PSCustomObject]@{ Name = $name; Text = "$pct$sym" }
         }
-        
-        foreach ($pair in $poolMap.GetEnumerator()) {
-            $null = $m.Items.Add("$($pair.Key) Pool:")
+
+        $poolOrder = @("Gemini", "Claude", "GPT", "Other")
+        foreach ($pool in $poolOrder) {
+            if (-not $poolMap.ContainsKey($pool)) { continue }
+            $null = $m.Items.Add("$pool Pool:")
             $m.Items[-1].Enabled = $false
-            foreach ($modelName in $pair.Value.Keys) {
-                $null = $m.Items.Add("  $modelName — $($pair.Value[$modelName])")
+            foreach ($entry in ($poolMap[$pool] | Sort-Object Name)) {
+                $null = $m.Items.Add("  $($entry.Name) — $($entry.Text)")
                 $m.Items[-1].Enabled = $false
             }
         }
@@ -142,7 +151,7 @@ function BuildMenu($Status, $Quota) {
 function BuildTooltip($Status, $Quota) {
     $poolMap = @{}
     $poolResetMap = @{}
-    
+
     if ($Quota -and $Quota.models -and $Quota.models.Count -gt 0) {
         foreach ($mod in $Quota.models) {
             $pool = "Other"
@@ -150,20 +159,14 @@ function BuildTooltip($Status, $Quota) {
             if ($lower -match "gemini") { $pool = "Gemini" }
             elseif ($lower -match "claude") { $pool = "Claude" }
             elseif ($lower -match "gpt|oss") { $pool = "GPT" }
-            
+
             if (-not $poolMap.ContainsKey($pool)) {
-                $poolMap[$pool] = @{ remaining = 0; count = 0 }
+                $poolMap[$pool] = @{ remaining = $null; count = 0 }
                 $poolResetMap[$pool] = $null
             }
-            if ($mod.remainingPct -ne $null -and $mod.usedPct -ne $null) {
-                $sum = $mod.remainingPct + $mod.usedPct
-                $rem = $mod.remainingPct
-                if ($sum -gt 2) {
-                    $rem = $rem / 100
-                }
-                $remPct = [math]::Round($rem * 100, 1)
-                if ($poolMap[$pool].count -eq 0 -or $remPct -lt $poolMap[$pool].remaining) {
-                    $poolMap[$pool].remaining = $remPct
+            if ($mod.remainingPct -ne $null) {
+                if ($poolMap[$pool].remaining -eq $null -or $mod.remainingPct -lt $poolMap[$pool].remaining) {
+                    $poolMap[$pool].remaining = $mod.remainingPct
                 }
             }
             $poolMap[$pool].count++
@@ -172,20 +175,21 @@ function BuildTooltip($Status, $Quota) {
             }
         }
     }
-    
+
     $parts = @()
-    foreach ($pool in @("Gemini", "Claude")) {
+    foreach ($pool in @("Gemini", "Claude", "GPT", "Other")) {
         if ($poolMap.ContainsKey($pool)) {
             $rem = $poolMap[$pool].remaining
+            $remStr = if ($rem -ne $null) { "$([math]::Round($rem, 1))%" } else { "—" }
             $resetStr = ""
             if ($poolResetMap[$pool]) {
                 $resetTime = [DateTimeOffset]::Parse($poolResetMap[$pool]).LocalDateTime
                 $resetStr = " $($resetTime.ToString('HH:mm'))"
             }
-            $parts += "${pool}: ${rem}% left${resetStr}"
+            $parts += "${pool}: ${remStr} left${resetStr}"
         }
     }
-    
+
     if ($parts.Count -eq 0) { $parts += "No data" }
     $full = ($parts -join "`n")
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($full)

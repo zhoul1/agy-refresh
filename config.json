@@ -15,12 +15,21 @@
     "maxRetries": 3
   },
   "monitor": {
-    "intervalMinutes": 10,
+    "intervalMinutes": 30,
     "agyTimeoutMs": 30000
   },
   "web": {
     "port": 6789,
     "host": "0.0.0.0",
     "trayEnabled": true
+  },
+  "imageGen": {
+    "enabled": true,
+    "endpoint": "",
+    "method": "GenerateImage",
+    "model": "gemini-3.1-flash-image",
+    "prompt": "a tiny red square on white background",
+    "authToken": "",
+    "timeoutMs": 30000
   }
 }
