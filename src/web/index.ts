@@ -429,15 +429,15 @@ export function startWebServer(cfg: WebConfig, options: WebServerOptions = {}) {
   if (existsSync(join(STATIC_DIR, "index.html"))) {
     app.get("/", async () => {
       const f = Bun.file(join(STATIC_DIR, "index.html"));
-      return new Response(f, { headers: { "content-type": "text/html; charset=utf-8" } });
+      return new Response(f, { headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store, no-cache, must-revalidate, max-age=0" } });
     });
     app.get("/app.js", async () => {
       const f = Bun.file(join(STATIC_DIR, "app.js"));
-      return new Response(f, { headers: { "content-type": "application/javascript; charset=utf-8" } });
+      return new Response(f, { headers: { "content-type": "application/javascript; charset=utf-8", "cache-control": "no-store, no-cache, must-revalidate, max-age=0" } });
     });
     app.get("/style.css", async () => {
       const f = Bun.file(join(STATIC_DIR, "style.css"));
-      return new Response(f, { headers: { "content-type": "text/css; charset=utf-8" } });
+      return new Response(f, { headers: { "content-type": "text/css; charset=utf-8", "cache-control": "no-store, no-cache, must-revalidate, max-age=0" } });
     });
   }
 
