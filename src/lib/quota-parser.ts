@@ -70,7 +70,14 @@ export function parseUserStatusToSnapshot(input: any): QuotaSnapshot {
       const modelOrAlias = m.modelOrAlias;
       const modelId = modelOrAlias?.model || "unknown";
       const quotaInfo = m.quotaInfo;
-      let remainingFraction = typeof quotaInfo?.remainingFraction === "number" ? quotaInfo.remainingFraction : undefined;
+let remainingFraction: number | undefined;
+      const raw = quotaInfo?.remainingFraction;
+      if (typeof raw === "number") {
+        remainingFraction = raw;
+      } else if (typeof raw === "string" && raw !== "") {
+        const parsed = parseFloat(raw);
+        if (!isNaN(parsed)) remainingFraction = parsed;
+      }
       // 兼容后端有时直接返回百分比（如 80）而非小数（0.8）的场景
       if (remainingFraction !== undefined && remainingFraction > 1) {
         remainingFraction = remainingFraction / 100;

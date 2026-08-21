@@ -1290,8 +1290,14 @@ function renderTrendsPoolSummary() {
 }
 
 async function renderTrends() {
-  $("#content").innerHTML = `<div class="page-loading">${t("common.loading")}</div>`;
-  await refreshQuotaHistory(Store.trendsHours);
+$("#content").innerHTML = `<div class="page-loading">${t("common.loading")}</div>`;
+  try {
+    await refreshQuotaHistory(Store.trendsHours);
+  } catch (e) {
+    console.warn("refreshQuotaHistory failed", e);
+    Store.quotaHistory = [];
+    Store.models = [];
+  }
   const html = [];
   html.push(`<div class="tabs-row">
     <div class="tab ${Store.trendsHours === 24 ? "active" : ""}" data-hours="24">${t("trends.24h")}</div>
